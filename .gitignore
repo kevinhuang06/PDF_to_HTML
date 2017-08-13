@@ -43,4 +43,5 @@ Temporary Items
 .apdisk
 
 mycode/data/*
+mycode/data
 *.pyc
