@@ -1,6 +1,7 @@
 from simplePDF2html import *
 import os
 import copy
+import glob
 
 def get_HTML_fname(pdf_name):
 	parts = pdf_name.split('.')
@@ -24,8 +25,9 @@ def get_PDF_fnames(directory):
 # fname_list = ['data/table_example_1.pdf', 'data/table_example_2.pdf', 'data/table_example_3.pdf', 'data/table_example_4.pdf', 'data/table_example_5.pdf', 'data/table_example_6.pdf', 'data/table_example_7.pdf', 'data/table_example_8.pdf']
 # fname_list = ['data/table_example_8.pdf']
 # fname_list = ['data/table_example_5.pdf']
-fname_list = ['data/table_example_17.pdf'] #9 # 5 # 11 #12 # 14
-#fname_list = ['data/2016-04-27-1202251320.PDF'] # table testcase
+fname_list = ['data2/2016-03-05-1202024359.PDF'] #9 # 5 # 11 #12 # 14
+#'data2/bad_case/2014-12-29-64666524.PDF'
+#fname_list = ['data2/bad_case/2016-10-12-1202754801.PDF']#'data2/2016-08-11-1202559993.PDF'] # table testcase
 # fname_list = ['data/2016-03-26-1202083817.PDF']
 # fname_list = ['data/2016-03-12-1202040147.PDF']
 # fname_list = ['data/simple1.PDF', 'data/simple2.PDF', 'data/simple3.PDF']
@@ -35,6 +37,11 @@ fname_list = ['data/table_example_17.pdf'] #9 # 5 # 11 #12 # 14
 # fname_list = ['data/2016-01-19-1201924052.PDF']
 # fname_list = ['data/2016-01-19-1201924054.PDF']
 # fname_list = get_PDF_fnames('data/')
+
+#for file_name in glob.glob(r"data2/*.PDF"):
+#	fname_list.append(file_name)
+print fname_list
+
 COUNT = True
 if COUNT:
 	cnt_total = 0

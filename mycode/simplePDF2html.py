@@ -148,6 +148,8 @@ class simplePDF2HTML(PDF2HTML):
                         if key[:2] == 'GS':
                             outline_objid = dest[0].resolve()['Resources']['ExtGState'][key].objid
                             break
+                else:
+                    continue
                 self.outline_levels.append(level)
                 self.outlines_dict[title] = outline_objid
                 self.outline_titles.append(title)
@@ -214,7 +216,8 @@ class simplePDF2HTML(PDF2HTML):
         prev_indent = None
         prev_align = None
         prev_length = None
-        for page in PDFPage.create_pages(self.document):
+        for idx,page in enumerate(PDFPage.create_pages(self.document)):
+            print idx
             print "processing page {0}".format(page_idx)
             # print page
             # print page.resources
@@ -243,6 +246,7 @@ class simplePDF2HTML(PDF2HTML):
             # print page_xrange, page_yrange
             content_xrange, indent_list, fontsize_list = self.get_indent_info(layout, page_xrange)
             if len(indent_list) == 0 or len(fontsize_list) == 0:  # 空白页
+                print idx, "empty"
                 continue
             content_width = content_xrange[1] - content_xrange[0]
             major_indents, map_indents, major_size = self.get_conclude(indent_list, fontsize_list)
@@ -450,7 +454,7 @@ class simplePDF2HTML(PDF2HTML):
                             if prev_text:
                                 self.write(
                                     '<p style="font-size:{2}px;font-weight:{3};text-indent:{4}em;" align="{1}">{0}</p>'.format( \
-                                        prev_text, prev_align, prev_size, prev_weight, prev_indent
+                                        prev_text.strip(), prev_align, prev_size, prev_weight, prev_indent
                                     ))
                             prev_text = None
                         # 准备传给下一次迭代
@@ -468,12 +472,12 @@ class simplePDF2HTML(PDF2HTML):
                         if prev_text:
                             self.write(
                                 '<p style="font-size:{2}px;font-weight:{3};text-indent:{4}em;" align="{1}">{0}</p>'.format( \
-                                    prev_text, prev_align, prev_size, prev_weight, prev_indent
+                                    prev_text.strip(), prev_align, prev_size, prev_weight, prev_indent
                                 ))
                             prev_text = None
                         self.write(
                             '<p style="font-size:{2}px;font-weight:{3};text-indent:0.0em;" align="{1}">{0}</p>'.format( \
-                                text, align, fontsize, fontweight
+                                text.strip(), align, fontsize, fontweight
                             ))
             page_idx += 1
             self.level -= 1
@@ -481,7 +485,7 @@ class simplePDF2HTML(PDF2HTML):
 
         if prev_text:
             self.write('<p style="font-size:{2}px;font-weight:{3};text-indent:{4}em;" align="{1}">{0}</p>'.format( \
-                prev_text, prev_align, prev_size, prev_weight, prev_indent
+                prev_text.strip(), prev_align, prev_size, prev_weight, prev_indent
             ))
         self.level -= 1
         self.write('</body>')
@@ -550,7 +554,7 @@ class simplePDF2HTML(PDF2HTML):
                 rs = rowspan[i][j]
                 cs = colspan[i][j]
                 candy = 'align=\"middle\"'
-                res = re.search(r'[\d,\.-]+', "".join(content))
+                res = re.search(r'[%\d,\.-]+', "".join(content))
 
                 if res and res.group()=="".join(content):
                     candy = 'align=\"right\"'
@@ -610,6 +614,7 @@ class simplePDF2HTML(PDF2HTML):
                     indent_list[indent] += 1
                 else:
                     indent_list[indent] = 1
+            #elif (isinstance(x, LTFigure)):
         return (most_left, most_right), indent_list, fontsize_list
 
     def if_close_to(self, src, dst, mode='percent', threshold=0.1):
@@ -764,18 +769,21 @@ class simplePDF2HTML(PDF2HTML):
         draw.square(page_range["left"], page_range["right"], page_range["top"], page_range["bottom"])
         for x in layout:
             isLine = False
+
             if (isinstance(x, LTTextBoxHorizontal)):
                 for line in x:
                     # print line # LTTextLine
-                    draw.set_color("green")
-                    draw.square(line.x0, line.x1, line.y1, line.y0)
+                    #draw.set_color("green")
+                    if line.x1 - line.x0 > 12:
+                        draw.square(line.x0, line.x1, line.y1, line.y0)
                     for char in line:
                         # print char # LTChar / LTAnno
                         if isinstance(char, LTChar):
                             draw.set_color("brown")
-                            draw.square(char.x0, char.x1, char.y1, char.y0)
+                            #draw.square(char.x0, char.x1, char.y1, char.y0)
+                            #print char.get_text()
                         elif isinstance(char, LTChar):
-                            draw.set_color("gray")
+                            draw.set_color("blue")
                             draw.square(char.x0, char.x1, char.y1, char.y0)
                 draw.set_color("black")
             elif (isinstance(x, LTRect)):
@@ -788,6 +796,7 @@ class simplePDF2HTML(PDF2HTML):
                 # print x
                 # raw_input()
                 draw.set_color("blue")
+
             left = x.x0
             right = x.x1
             top = x.y1
@@ -800,8 +809,11 @@ class simplePDF2HTML(PDF2HTML):
                 fixed_x = (left + right) / 2.0
                 draw.line(fixed_x, top, fixed_x, bottom)
             else:
-                draw.square(left, right, top, bottom)
-        raw_input()
+                pass
+                #if (right - left) > 12:
+                #    print right - left
+                #    draw.square(left, right, top, bottom)
+        time.sleep(1000)
         return layout
 
     def get_closest_idx(self, goal_value, lst, threshold):
@@ -1757,3 +1769,4 @@ class Draw(object):
         turtle.goto(left + self.offset_x, bottom + self.offset_y)
         turtle.goto(left + self.offset_x, top + self.offset_y)
         turtle.penup()
+
