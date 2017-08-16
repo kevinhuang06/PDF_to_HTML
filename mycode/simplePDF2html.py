@@ -28,6 +28,7 @@ sys.setdefaultencoding('utf8') #设置默认编码
 # sys.getdefaultencoding() #'ascii'
 
 
+
 class PDF2HTML(object):
     def __init__(self, pdf_path, html_path, password="", codec='utf-8', bias_param=[1.5, 2]):
         self.pdf_path = pdf_path
@@ -48,6 +49,9 @@ class PDF2HTML(object):
         self.debug_mode_on = False #True
         self.pages = []
         self.page_html = ""
+        self.catalog_separator = ""
+        self.subtitles = []
+        self.curr_anchor_id = 1
         # http://webdesign.about.com/od/styleproperties/p/blspfontweight.htm
         self.fontweight_dict = {
             self.chinese_str('ABCDEE+黑体'): 'bold',
@@ -86,17 +90,59 @@ class PDF2HTML(object):
             self.page_html += content
         self.writer.write(self.level * self.indent + str(content).encode('utf-8') + '\n')
 
+
+    def is_catalog(self, content):
+
+        catalog_base_word = {u'第': '', u'章': '', u'节': '',
+                             u'一': 1, u'二': 2, u'三': 3, u'四': 4, u'五': 5,
+                             u'六': 6, u'七': 7, u'八': 8, u'九': 9, u'十': 10
+                             }
+        if u'..........' in content:
+            return False
+        candidate_space = content.split(' ')[0].decode('utf-8')
+        if len(candidate_space) >= 3: # 第一章
+            is_space_title = True
+            for c in candidate_space:
+                if c not in catalog_base_word:
+                    is_space_title = False
+                    break
+            if is_space_title is True:
+                #if len(self.subtitles) == 0:
+                self.catalog_separator = " "
+                self.subtitles.append({'stName': [content],
+                                       'anchorId': "{0}".format(self.curr_anchor_id), 'sub': []})
+                return True
+
+        candidate_dayton = content.split('、')[0].decode('utf-8')
+        if len(candidate_dayton) >= 1: # 一
+            is_dayton_title = True
+            for c in candidate_dayton:
+                if c not in catalog_base_word:
+                    is_dayton_title = False
+                    break
+            if is_dayton_title is True:
+                if self.catalog_separator is " ":
+                    parent_title = self.subtitles[-1]['stName']
+                    self.subtitles[-1]['sub'].append({'stName':[parent_title[0], content],
+                                                      'anchorId': "{0}".format(self.curr_anchor_id)})
+                else:
+                    self.subtitles.append({'Stx': [content], 'anchorId': "{0}".format(self.curr_anchor_id)})
+                return True
+        return False
+
     def write2(self, text, align, font_size, weight, indent, page_id=-1):
 
         content = text
-
-        #print font_size,indent
         is_page_number = text.isdigit() and int(text) is page_id
-
         if font_size > 12 or weight is not 'normal':
-            content = '<b>{0}</b>'.format(text)
+            content = '<b>{0}</b>'.format(content)
         content = '{0}{1}'.format(int(indent)*'&emsp;', content)
-        content = '<p align="{0}">{1}</p>'.format(align, content)
+
+        if self.is_catalog(text):
+            content = '<p id="{0}" align="{1}">{2}</p>'.format(self.curr_anchor_id, align, content)
+            self.curr_anchor_id += 1
+        else:
+            content = '<p align="{0}">{1}</p>'.format(align, content)
 
         self.write(content, not is_page_number)
 
@@ -243,6 +289,8 @@ class simplePDF2HTML(PDF2HTML):
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
             page_idx = idx + 1
+            if page_idx > 20:
+                break
             if idx > 0:
                 #record last page
                 #print "#%s#"%self.page_html[-5:]
@@ -508,6 +556,9 @@ class simplePDF2HTML(PDF2HTML):
         self.page_html = ""
         with open(self.json_path,'w') as f:
             print >>f,json.dumps(self.pages, ensure_ascii=False)
+            print >>f,json.dumps(self.subtitles, ensure_ascii=False)
+        print "title"
+        print json.dumps(self.subtitles, ensure_ascii=False)
         self.level -= 1
         self.write('</body>')
 
