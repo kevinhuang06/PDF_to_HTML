@@ -1,6 +1,18 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+import re
+import gc
+import sys
+import copy
+import time
+import json
+
+
+import operator # 为了排序
+import turtle # 为了可视化显示检测到的布局
+
+
 from pdfminer.converter import PDFPageAggregator
 from pdfminer.pdfparser import PDFParser
 from pdfminer.pdfdocument import PDFDocument
@@ -9,12 +21,7 @@ from pdfminer.pdfpage import PDFTextExtractionNotAllowed
 from pdfminer.pdfinterp import PDFResourceManager
 from pdfminer.pdfinterp import PDFPageInterpreter
 from pdfminer.layout import *
-import re
-import operator # 为了排序
-import turtle # 为了可视化显示检测到的布局
-import copy
-import time
-import sys, gc
+
 
 reload(sys)
 sys.setdefaultencoding('utf8') #设置默认编码
@@ -29,6 +36,7 @@ class PDF2HTML(object):
         self.bias_param = bias_param
         self.reader = open(pdf_path, 'rb')
         self.writer = open(html_path, 'w')  # 'a'
+        self.json_path = html_path.replace("html","json")
         self.debug_log = open('debug.log', 'a')
         self.password = password
         self.device = None
@@ -38,7 +46,8 @@ class PDF2HTML(object):
         self.outlines_dict = None
 
         self.debug_mode_on = False #True
-
+        self.pages = []
+        self.page_html = ""
         # http://webdesign.about.com/od/styleproperties/p/blspfontweight.htm
         self.fontweight_dict = {
             self.chinese_str('ABCDEE+黑体'): 'bold',
@@ -72,8 +81,24 @@ class PDF2HTML(object):
         sys._clear_type_cache()
         gc.collect()
 
-    def write(self, content):
+    def write(self, content, body=False):
+        if body:
+            self.page_html += content
         self.writer.write(self.level * self.indent + str(content).encode('utf-8') + '\n')
+
+    def write2(self, text, align, font_size, weight, indent, page_id=-1):
+
+        content = text
+
+        #print font_size,indent
+        is_page_number = text.isdigit() and int(text) is page_id
+
+        if font_size > 12 or weight is not 'normal':
+            content = '<b>{0}</b>'.format(text)
+        content = '{0}{1}'.format(int(indent)*'&emsp;', content)
+        content = '<p align="{0}">{1}</p>'.format(align, content)
+
+        self.write(content, not is_page_number)
 
     def debug_write(self, content):
         self.debug_log.write(str(content).encode('utf-8') + '\n')
@@ -100,6 +125,7 @@ class PDF2HTML(object):
 
 
 class simplePDF2HTML(PDF2HTML):
+
     # 转换格式主函数
     def convert(self, bias_param=None):
         if bias_param:
@@ -133,16 +159,15 @@ class simplePDF2HTML(PDF2HTML):
         if raw_outlines:  # pdfpage #pdfdocument #pdftypes
             print "there are outlines included"
             for (level, title, dest, a, se) in raw_outlines:
-                '''
+                """
                 print level
                 print title
-                raw_input()
-                '''
-                # print dest
+                print dest
+                """
                 # print dest[0].resolve()
                 # print dest[0].resolve()['Resources']['ExtGState']['GS0'].objid
                 # outline_objid = dest[0].resolve()['Resources']['ExtGState']['GS0'].objid
-                if 'ExtGState' in dest[0].resolve()['Resources']:
+                if dest and 'ExtGState' in dest[0].resolve()['Resources']:
                     outline_objid = 0
                     for key in dest[0].resolve()['Resources']['ExtGState'].keys():
                         if key[:2] == 'GS':
@@ -217,7 +242,12 @@ class simplePDF2HTML(PDF2HTML):
         prev_align = None
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
-            print idx
+            page_idx = idx + 1
+            if idx > 0:
+                #record last page
+                #print "#%s#"%self.page_html[-5:]
+                self.pages.append({'PageNo': idx, 'PageContent': self.page_html})
+                self.page_html = ""
             print "processing page {0}".format(page_idx)
             # print page
             # print page.resources
@@ -229,7 +259,7 @@ class simplePDF2HTML(PDF2HTML):
                     if key[:2] == 'GS':
                         page_objid = page.resources['ExtGState'][key].objid
                         break
-            self.write('<div id="{0}">'.format(page_objid))
+            self.write('<div id="{0}">'.format(page_objid), True)
             self.level += 1
             # print page_objid
             # if page_objid in self.outlines.keys():
@@ -407,10 +437,7 @@ class simplePDF2HTML(PDF2HTML):
                         if not table_drawn[in_table[x_idx]]:
                             #########
                             if prev_text:
-                                self.write(
-                                    '<p style="font-size:{2}px;font-weight:{3};text-indent:{4}em;" align="{1}">{0}</p>'.format( \
-                                        prev_text, prev_align, prev_size, prev_weight, prev_indent
-                                    ))
+                                self.write2(prev_text.strip(), prev_align, prev_size, prev_weight, prev_indent)
                             prev_text = None
                             #########
                             # haven't drawn yet
@@ -425,10 +452,7 @@ class simplePDF2HTML(PDF2HTML):
                         if not self.drawn_outline[tmp_outline_idx]:
                             #########
                             if prev_text:
-                                self.write(
-                                    '<p style="font-size:{2}px;font-weight:{3};text-indent:{4}em;" align="{1}">{0}</p>'.format( \
-                                        prev_text, prev_align, prev_size, prev_weight, prev_indent
-                                    ))
+                                self.write2(prev_text.strip(), prev_align, prev_size, prev_weight, prev_indent)
                             prev_text = None
                             #########
                             # print "draw outline here"
@@ -452,10 +476,7 @@ class simplePDF2HTML(PDF2HTML):
                         ended = self.if_para_end(actual_left, major_indents, prev_length / typical_length)
                         if ended:
                             if prev_text:
-                                self.write(
-                                    '<p style="font-size:{2}px;font-weight:{3};text-indent:{4}em;" align="{1}">{0}</p>'.format( \
-                                        prev_text.strip(), prev_align, prev_size, prev_weight, prev_indent
-                                    ))
+                                self.write2(prev_text.strip(), prev_align, prev_size, prev_weight, prev_indent)
                             prev_text = None
                         # 准备传给下一次迭代
                         if prev_text:
@@ -470,23 +491,23 @@ class simplePDF2HTML(PDF2HTML):
                             prev_length = length
                     else:
                         if prev_text:
-                            self.write(
-                                '<p style="font-size:{2}px;font-weight:{3};text-indent:{4}em;" align="{1}">{0}</p>'.format( \
-                                    prev_text.strip(), prev_align, prev_size, prev_weight, prev_indent
-                                ))
+                            self.write2(prev_text.strip(), prev_align, prev_size, prev_weight, prev_indent)
+
                             prev_text = None
-                        self.write(
-                            '<p style="font-size:{2}px;font-weight:{3};text-indent:0.0em;" align="{1}">{0}</p>'.format( \
-                                text.strip(), align, fontsize, fontweight
-                            ))
-            page_idx += 1
+                        self.write2(text.strip(), align, fontsize, fontweight, 0, page_id=page_idx)
+
+
+
             self.level -= 1
             self.write('</div>')
 
         if prev_text:
-            self.write('<p style="font-size:{2}px;font-weight:{3};text-indent:{4}em;" align="{1}">{0}</p>'.format( \
-                prev_text.strip(), prev_align, prev_size, prev_weight, prev_indent
-            ))
+            self.write2(prev_text.strip(), prev_align, prev_size, prev_weight, prev_indent)
+        #print "#%s#"%self.page_html
+        self.pages.append({'PageNo': page_idx, 'PageContent': self.page_html})
+        self.page_html = ""
+        with open(self.json_path,'w') as f:
+            print >>f,json.dumps(self.pages, ensure_ascii=False)
         self.level -= 1
         self.write('</body>')
 
@@ -541,12 +562,12 @@ class simplePDF2HTML(PDF2HTML):
         if page_xrange:
             width_portion = 100.0 * (table_frame.range['max_x'] - table_frame.range['min_x']) / (
             page_xrange[1] - page_xrange[0])
-            self.write('<table border="1" cellspacing="0" align="center" width="{0}%">'.format(int(width_portion)))
+            self.write('<table border="1" cellspacing="0" align="center" width="{0}%">'.format(int(width_portion)), True)
         else:
-            self.write('<table border="1" cellspacing="0" align="center">')
+            self.write('<table border="1" cellspacing="0" align="center">', True)
         self.level += 1
         for i in range(len(data)):
-            self.write('<tr>')
+            self.write('<tr>', True)
             self.level += 1
             for j in range(len(data[i])):
                 content = data[i][j]
@@ -560,14 +581,14 @@ class simplePDF2HTML(PDF2HTML):
                     candy = 'align=\"right\"'
 
                 if fontsize:
-                    self.write('<td style="font-size: {1}px;" rowspan="{2}" colspan="{3}" {4}>{0}</td>'.format(
-                        "<br>".join(content), fontsize, rs, cs, candy))
+                    self.write('<td  rowspan="{1}" colspan="{2}" {3}>{0}</td>'.format(
+                        "<br>".join(content), rs, cs, candy), True)
                 else:
-                    self.write('<td rowspan="{1}" colspan="{2}" {3}>{0}</td>'.format("<br>".join(content), rs, cs, candy))
+                    self.write('<td rowspan="{1}" colspan="{2}" {3}>{0}</td>'.format("<br>".join(content), rs, cs, candy), True)
             self.level -= 1
-            self.write('</tr>')
+            self.write('</tr>', True)
         self.level -= 1
-        self.write('</table>')
+        self.write('</table>', True)
 
     def get_font(self, x):
         default_fontname = self.chinese_str('ABCDEE+宋体')
