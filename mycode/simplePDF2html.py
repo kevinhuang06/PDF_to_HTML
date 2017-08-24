@@ -1,6 +1,7 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
+#coding=utf-8
 
+import os
 import re
 import gc
 import sys
@@ -28,6 +29,67 @@ sys.setdefaultencoding('utf8') #设置默认编码
 # sys.getdefaultencoding() #'ascii'
 
 
+base_struct = {
+  "Total": 1,
+  "ElapsedTime": 1,
+  "Hits": [
+    {
+      "Id": "4282431",
+      "Source": {
+        "Key": None,
+        "Title": "宜华健康：关于签署购买资产框架协议的公告",
+        "Paragraphs": [],
+        "Pages": [],
+        "SubTitles": [],
+        "PublishDate": "2016-12-30T00:00:00",
+        "StockCode": "000150",
+        "StockTicker": "宜华健康",
+        "Url": "https://stock.tianyancha.com/announcement/",
+        "Industry": "",
+        "ParentIndustry": "",
+        "Province": "浙江省",
+        "RelevantLaws": [
+          {
+            "LawId": 0,
+            "LawTitle": "《中华人民共和国公司法》"
+          },
+          {
+            "LawId": 0,
+            "LawTitle": "《广告业发展“十三五”规划》"
+          }
+        ],
+        "Href": "/Home/DisclosureDetail?key=DsHIVSygwhgqacIphu2iYw==&market=1",
+        "TotalPage": 0,
+        "FileType": 1
+      },
+      "Highlight": {
+        "Content": [
+          "【预览】 ..."
+        ],
+        "Title": []
+      },
+      "Cat": None,
+      "Cmt": None,
+      "FavTime": "0001-01-01T00:00:00"
+    }
+  ],
+  "Aggregations": [],
+  "Token": None,
+  "Message": None
+}
+
+
+def get_corners(line):
+    text = ""
+    char_list = []
+    for char in line:
+        if isinstance(char, LTChar):
+            if u' '!=char.get_text():
+                char_list.append(char)
+            text += char.get_text()
+    if len(char_list) > 0:
+        return (char_list[0].x0, line.y0),(char_list[-1].x1,line.y1)
+    return (line.x0,line.y0) , (line.x1,line.y1)
 
 class PDF2HTML(object):
     def __init__(self, pdf_path, html_path, password="", codec='utf-8', bias_param=[1.5, 2]):
@@ -37,7 +99,7 @@ class PDF2HTML(object):
         self.bias_param = bias_param
         self.reader = open(pdf_path, 'rb')
         self.writer = open(html_path, 'w')  # 'a'
-        self.json_path = html_path.replace("html","json")
+        self.json_path = os.path.join("/Users/kevinhuang/svn/pdfweb/pdfweb/resources/data/", os.path.basename(html_path).replace('html','json'))
         self.debug_log = open('debug.log', 'a')
         self.password = password
         self.device = None
@@ -91,14 +153,13 @@ class PDF2HTML(object):
         self.writer.write(self.level * self.indent + str(content).encode('utf-8') + '\n')
 
 
-    def is_catalog(self, content):
+    def is_catalog(self, content ):
 
         catalog_base_word = {u'第': '', u'章': '', u'节': '',
                              u'一': 1, u'二': 2, u'三': 3, u'四': 4, u'五': 5,
                              u'六': 6, u'七': 7, u'八': 8, u'九': 9, u'十': 10
                              }
-        if u'..........' in content:
-            return False
+
         candidate_space = content.split(' ')[0].decode('utf-8')
         if len(candidate_space) >= 3: # 第一章
             is_space_title = True
@@ -109,8 +170,8 @@ class PDF2HTML(object):
             if is_space_title is True:
                 #if len(self.subtitles) == 0:
                 self.catalog_separator = " "
-                self.subtitles.append({'stName': [content],
-                                       'anchorId': "{0}".format(self.curr_anchor_id), 'sub': []})
+                self.subtitles.append({'stName': content,
+                                       'anchorId': "p{0}".format(self.curr_anchor_id), 'sub': []})
                 return True
 
         candidate_dayton = content.split('、')[0].decode('utf-8')
@@ -122,25 +183,41 @@ class PDF2HTML(object):
                     break
             if is_dayton_title is True:
                 if self.catalog_separator is " ":
-                    parent_title = self.subtitles[-1]['stName']
-                    self.subtitles[-1]['sub'].append({'stName':[parent_title[0], content],
-                                                      'anchorId': "{0}".format(self.curr_anchor_id)})
+                    self.subtitles[-1]['sub'].append({'stName': content,
+                                                      'anchorId': "p{0}".format(self.curr_anchor_id)})
                 else:
-                    self.subtitles.append({'Stx': [content], 'anchorId': "{0}".format(self.curr_anchor_id)})
+                    self.subtitles.append({'stName': content, 'anchorId': "p{0}".format(self.curr_anchor_id)})
                 return True
         return False
 
     def write2(self, text, align, font_size, weight, indent, page_id=-1):
 
         content = text
-        is_page_number = text.isdigit() and int(text) is page_id
-        if font_size > 12 or weight is not 'normal':
+        is_catalog = False
+        if u'..........' in content:
+            content_list = content.split(' ')
+            catalog_list = []
+            for item in content_list:
+                catalog_list.append(item)
+                catalog_list.append('&nbsp;')
+                if item.isdigit():
+                    catalog_list.append('<br>')
+            content = ''.join(catalog_list)
+        else:
+            is_catalog = self.is_catalog(content) # 需要用字号 排除一下干扰
+
+        is_page_number = text.isdigit() and int(text) > 0
+
+        if is_catalog or weight is not 'normal': # font_size > 12 or
             content = '<b>{0}</b>'.format(content)
         content = '{0}{1}'.format(int(indent)*'&emsp;', content)
 
-        if self.is_catalog(text):
-            content = '<p id="{0}" align="{1}">{2}</p>'.format(self.curr_anchor_id, align, content)
+        if is_catalog is True:
+            content = '<p id="p{0}" align="{1}">{2}</p>'.format(self.curr_anchor_id, align, content)
             self.curr_anchor_id += 1
+            if self.curr_anchor_id == 8:
+                pass
+            print self.curr_anchor_id
         else:
             content = '<p align="{0}">{1}</p>'.format(align, content)
 
@@ -178,7 +255,7 @@ class simplePDF2HTML(PDF2HTML):
             self.bias_param = bias_param
         print "initializing the parser setting..."
         self.simpleParse()
-        # print "simple convert"
+
         print "writing to the HTML file..."
         self.writeHTML()
         pass
@@ -191,9 +268,10 @@ class simplePDF2HTML(PDF2HTML):
         # 检查文件是否允许文本提取
         if not self.document.is_extractable:
             raise PDFTextExtractionNotAllowed
+
         # 试试看能否直接提取目录
         try:
-            raw_outlines = self.document.get_outlines()
+            raw_outlines = None#self.document.get_outlines()
         except Exception, e:
             raw_outlines = None
 
@@ -289,8 +367,8 @@ class simplePDF2HTML(PDF2HTML):
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
             page_idx = idx + 1
-            if page_idx > 20:
-                break
+            if page_idx ==7:
+                pass
             if idx > 0:
                 #record last page
                 #print "#%s#"%self.page_html[-5:]
@@ -371,8 +449,9 @@ class simplePDF2HTML(PDF2HTML):
                         if (isinstance(line, LTTextLineHorizontal)):
                             for i in range(len(table_frames)):
                                 # table_frames[i]
-                                corner1 = (line.x0, line.y0)
-                                corner2 = (line.x1, line.y1)
+
+                                corner1,corner2 = get_corners(line)
+
                                 if table_frames[i].is_in_range(corner1) and table_frames[i].is_in_range(corner2):
                                     table_idx = i
                                     break
@@ -555,8 +634,9 @@ class simplePDF2HTML(PDF2HTML):
         self.pages.append({'PageNo': page_idx, 'PageContent': self.page_html})
         self.page_html = ""
         with open(self.json_path,'w') as f:
-            print >>f,json.dumps(self.pages, ensure_ascii=False)
-            print >>f,json.dumps(self.subtitles, ensure_ascii=False)
+            base_struct['Hits'][0]['Source']['Pages'] = self.pages
+            base_struct['Hits'][0]['Source']['SubTitles'] = self.subtitles
+            print >>f,json.dumps(base_struct, ensure_ascii=False)
         print "title"
         print json.dumps(self.subtitles, ensure_ascii=False)
         self.level -= 1
@@ -1499,8 +1579,8 @@ class simplePDF2HTML(PDF2HTML):
             offset_y = -1.0 * (page_range["top"] + page_range["bottom"]) / 2.0
             size_x = 1.5 * (page_range["right"] - page_range["left"])
             size_y = 1.5 * (page_range["top"] - page_range["bottom"])
-            draw = Draw(size_x, size_y, offset_x, offset_y)
-            draw.square(page_range["left"], page_range["right"], page_range["top"], page_range["bottom"])
+            #draw = Draw(size_x, size_y, offset_x, offset_y)
+           # draw.square(page_range["left"], page_range["right"], page_range["top"], page_range["bottom"])
 
         # step 1
         bias, table_outline_elem_lst, table_raw_dash_lst, dashline_parser_xs, dashline_parser_ys = \
@@ -1532,8 +1612,10 @@ class simplePDF2HTML(PDF2HTML):
         # Step 4: 然后规范一下坐标值
         # 开始整理表格内容
         print "number of potential tables in this page is {0}".format(len(clean_tables_lst))
-        raw_lines, raw_points, points_visited = self.get_tables_raw_frame(clean_tables_lst, bias)
-
+        try:
+            raw_lines, raw_points, points_visited = self.get_tables_raw_frame(clean_tables_lst, bias)
+        except Exception:
+            pass
 
         if debug:
             point_list = raw_points.copy()
@@ -1560,6 +1642,7 @@ class simplePDF2HTML(PDF2HTML):
         divider_list = self.get_tables_divider_list(table_list, table_line_list, divider_list, bias)
         #self.show_page_layout_post(layout, table_line_list)
         # test
+
 
         if debug:
             for table in table_list:

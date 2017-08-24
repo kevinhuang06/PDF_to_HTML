@@ -44,6 +44,8 @@ Temporary Items
 
 mycode/data/*
 mycode/data
+mycode/hard_pdf/
+mycode/pdf/
 *.pyc
 .idea/PDF_to_HTML.iml
 .idea/misc.xml

@@ -51,3 +51,14 @@ def pdfTotxt(fileDir):
         print "Saved "+outPath
 
 # pdfTotxt(u'F:\\pdf\\2013')
+
+#!/usr/local/bin python
+import random
+
+flist = []
+with open('pdf_list.txt') as f:
+    for idx,line in enumerate(f):
+        path = line.strip().split(' ')[0]
+        flist.append(path)
+random.shuffle(flist)
+print flist[:10000]

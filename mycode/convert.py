@@ -23,12 +23,12 @@ def get_PDF_fnames(directory):
 # fname_list = ['data/outline_example_1.pdf']
 
 # fname_list = ['data/table_example_1.pdf', 'data/table_example_2.pdf', 'data/table_example_3.pdf', 'data/table_example_4.pdf', 'data/table_example_5.pdf', 'data/table_example_6.pdf', 'data/table_example_7.pdf', 'data/table_example_8.pdf']
-fname_list = ['data/2017-03-30-1203224890.PDF']
+#fname_list = ['data/2017-03-30-1203224890.PDF']
 #fname_list = ['data/2016-01-19-1201924055.PDF']
-#fname_list = ['data2/2016-08-26-1202643847.PDF'] #9 # 5 # 11 #12 # 14
+#fname_list = ['data2/2016-04-25-1202237114.PDF'] #9 # 5 # 11 #12 # 14
 #'data2/bad_case/2014-12-29-64666524.PDF'
 #fname_list = ['data2/bad_case/2016-10-12-1202754801.PDF']#'data2/2016-08-11-1202559993.PDF'] # table testcase
-# fname_list = ['data/2016-03-26-1202083817.PDF']
+fname_list = ['pdf/good/2016-03-30-1202104342.PDF']
 # fname_list = ['data/2016-03-12-1202040147.PDF']
 # fname_list = ['data/simple1.PDF', 'data/simple2.PDF', 'data/simple3.PDF']
 # fname_list = ['data/simple2.PDF']
@@ -47,7 +47,10 @@ if COUNT:
 	cnt_total = 0
 	cnt_success = 0
 	unsuccess = []
-bias_param_list = [[2, 3], [1.5, 2], [3, 5]]#[[3, 5]] 
+bias_param_list = [[2, 3], [1.5, 2], [3, 5]]#[[3, 5]]
+bias_param_list=[[3, 5]]
+failf = open('data2/fail_list.txt', 'w')
+success_f =  open('data2/success_list.txt', 'w')
 for fname in fname_list:
 	with simplePDF2HTML(fname, get_HTML_fname(fname)) as test:
 		print "trying to convert file {0}".format(test.pdf_path)
@@ -55,18 +58,22 @@ for fname in fname_list:
 		if COUNT:
 			cnt_total += 1
 			for bias_param in bias_param_list:
-				try:
-					print "trying parameter set {0}".format(bias_param)
-					test.convert(bias_param)
-					cnt_success += 1
-					print "succeed"
-					succeed = True
-					break
-				except Exception, e:
-					print "didn't succeed"
+				#try:
+				print "processing {0}st file".format(cnt_total)
+				# print "trying parameter set {1}:{0}".format(bias_param,cnt_total)
+				test.convert(bias_param)
+				cnt_success += 1
+				print "succeed"
+				succeed = True
+				break
+				#except Exception, e:
+				#	print "didn't succeed"
 			if not succeed:
 				print "failed to convert file {0}".format(test.pdf_path)
 				unsuccess.append(copy.copy(test.pdf_path))
+				print >>failf, test.pdf_path
+			else:
+				print >>success_f,  test.pdf_path
 		else:
 			for bias_param in bias_param_list:
 				print "trying parameter set {0}".format(bias_param)
