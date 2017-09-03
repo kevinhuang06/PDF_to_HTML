@@ -1835,7 +1835,14 @@ class simplePDF2HTML(PDF2HTML):
             for x_l in x_lines:
                 for y_l in y_lines:
                     k = (y_l[0][0],x_l[0][1])
-                    points_od[k] = [0]
+                    # y_line
+                    min_y = min(y_l[0][1], y_l[1][1])
+                    max_y = max(y_l[0][1], y_l[1][1])
+                    # x_line
+                    min_x = min(x_l[0][0], x_l[1][0])
+                    max_x = max(x_l[0][0], x_l[1][0])
+                    if  (k[0] > min_x-1 and k[0]<max_x+1) and (k[1]>min_y-1 and k[1]<max_y +1):
+                        points_od[k] = [0]
 
             for k in points_od:
                 if k[1] not in x_seg_points:
