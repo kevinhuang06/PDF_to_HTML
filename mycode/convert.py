@@ -28,7 +28,9 @@ def get_PDF_fnames(directory):
 #fname_list = ['data2/2016-04-25-1202237114.PDF'] #9 # 5 # 11 #12 # 14
 #'data2/bad_case/2014-12-29-64666524.PDF'
 #fname_list = ['data2/bad_case/2016-10-12-1202754801.PDF']#'data2/2016-08-11-1202559993.PDF'] # table testcase
-fname_list = ['pdf/good/2016-03-30-1202104342.PDF']
+fname_list = ['pdf/good/2016-04-21-1202221049.PDF']
+#fname_list = ['pdf/good/2016-03-30-1202104342.PDF']
+#fname_list=['pdf/good/2016-04-30-1202282034.PDF']
 # fname_list = ['data/2016-03-12-1202040147.PDF']
 # fname_list = ['data/simple1.PDF', 'data/simple2.PDF', 'data/simple3.PDF']
 # fname_list = ['data/simple2.PDF']
@@ -48,7 +50,7 @@ if COUNT:
 	cnt_success = 0
 	unsuccess = []
 bias_param_list = [[2, 3], [1.5, 2], [3, 5]]#[[3, 5]]
-bias_param_list=[[3, 5]]
+#bias_param_list=[[3, 5]]
 failf = open('data2/fail_list.txt', 'w')
 success_f =  open('data2/success_list.txt', 'w')
 for fname in fname_list:

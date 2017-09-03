@@ -12,7 +12,7 @@ import json
 
 import operator # 为了排序
 import turtle # 为了可视化显示检测到的布局
-
+from collections import OrderedDict
 
 from pdfminer.converter import PDFPageAggregator
 from pdfminer.pdfparser import PDFParser
@@ -367,8 +367,8 @@ class simplePDF2HTML(PDF2HTML):
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
             page_idx = idx + 1
-            if page_idx ==7:
-                pass
+            #if page_idx <=2:
+            #    continue
             if idx > 0:
                 #record last page
                 #print "#%s#"%self.page_html[-5:]
@@ -851,6 +851,63 @@ class simplePDF2HTML(PDF2HTML):
             else:
                 return "point"
         return False
+    def show_page_layout_points(self, layout, points, raw_lines=None):
+        page_range = {
+            "left": layout.x0,
+            "right": layout.x1,
+            "top": layout.y1,
+            "bottom": layout.y0
+        }
+
+        #turtle.tracer(False)
+        print "Page Range = left:{0}, right: {1}, top: {2}, bottom: {3}".format( \
+            page_range["left"], page_range["right"], page_range["top"], page_range["bottom"])
+        offset_x = -1.0 * (page_range["right"] + page_range["left"]) / 2.0
+        offset_y = -1.0 * (page_range["top"] + page_range["bottom"]) / 2.0
+        size_x = 1.5 * (page_range["right"] - page_range["left"])
+        size_y = 1.5 * (page_range["top"] - page_range["bottom"])
+        draw = Draw(size_x, size_y, offset_x, offset_y)
+        draw.set_color("black")
+        draw.square(page_range["left"], page_range["right"], page_range["top"], page_range["bottom"])
+
+        for p in points:
+            #for p in tp:
+            x,y = p[0],p[1]
+            draw.dot(x,y)
+        if raw_lines:
+            for p in raw_lines:
+                draw.line(p[0][0], p[0][1], p[1][0], p[1][1])
+        draw.done()
+        time.sleep(10)
+
+    def show_page_layout_lines(self, layout, lines):
+        page_range = {
+            "left": layout.x0,
+            "right": layout.x1,
+            "top": layout.y1,
+            "bottom": layout.y0
+        }
+
+        #turtle.tracer(False)
+        print "Page Range = left:{0}, right: {1}, top: {2}, bottom: {3}".format( \
+            page_range["left"], page_range["right"], page_range["top"], page_range["bottom"])
+        offset_x = -1.0 * (page_range["right"] + page_range["left"]) / 2.0
+        offset_y = -1.0 * (page_range["top"] + page_range["bottom"]) / 2.0
+        size_x = 1.5 * (page_range["right"] - page_range["left"])
+        size_y = 1.5 * (page_range["top"] - page_range["bottom"])
+        draw = Draw(size_x, size_y, offset_x, offset_y)
+        draw.set_color("black")
+        draw.square(page_range["left"], page_range["right"], page_range["top"], page_range["bottom"])
+
+        #for p in lines:
+            #for p in tline:
+        #    draw.line(p[0][0], p[0][1], p[1][0], p[1][1])
+        for t_lines in lines:
+            for p in t_lines:
+                draw.line(p['x0'], p['y0'], p['x1'], p['y1'])
+
+        draw.done()
+        time.sleep(10)
     def show_page_layout_post(self, layout, lines):
         page_range = {
             "left": layout.x0,
@@ -900,7 +957,7 @@ class simplePDF2HTML(PDF2HTML):
             else:
                 draw.square(left, right, top, bottom)
         """
-
+        draw.done()
         time.sleep(10)
 
     def show_page_layout(self, layout):
@@ -919,10 +976,11 @@ class simplePDF2HTML(PDF2HTML):
         draw = Draw(size_x, size_y, offset_x, offset_y)
         draw.set_color("black")
         draw.square(page_range["left"], page_range["right"], page_range["top"], page_range["bottom"])
+        idx = 0
         for x in layout:
             isLine = False
-
             if (isinstance(x, LTTextBoxHorizontal)):
+                """
                 for line in x:
                     # print line # LTTextLine
                     #draw.set_color("green")
@@ -938,9 +996,14 @@ class simplePDF2HTML(PDF2HTML):
                             draw.set_color("blue")
                             draw.square(char.x0, char.x1, char.y1, char.y0)
                 draw.set_color("black")
+                """
+                pass
             elif (isinstance(x, LTRect)):
                 isLine = self.is_line(x)
-                if isLine:
+
+                #if isLine:
+                idx +=1
+                if idx%2==0:
                     draw.set_color("orange")
                 else:
                     draw.set_color("red")
@@ -965,8 +1028,9 @@ class simplePDF2HTML(PDF2HTML):
                 #if (right - left) > 12:
                 #    print right - left
                 #    draw.square(left, right, top, bottom)
-        time.sleep(1000)
-        return layout
+        draw.done()
+        time.sleep(10)
+        #return layout
 
     def get_closest_idx(self, goal_value, lst, threshold):
         closest_idx = -1
@@ -988,7 +1052,7 @@ class simplePDF2HTML(PDF2HTML):
         dashline_parser_ys = []
         for x in layout:
             # if(isinstance(x, LTRect)):
-            if (isinstance(x, LTRect) or isinstance(x, LTFigure)):
+            if isinstance(x, LTRect) or isinstance(x, LTFigure):
                 left = x.x0
                 right = x.x1
                 top = x.y1
@@ -998,6 +1062,15 @@ class simplePDF2HTML(PDF2HTML):
                 top = int(top)
                 bottom = int(bottom)
                 isLine = self.is_line(x)
+                """
+                if isinstance(x,LTLine):
+                    if isLine == 'x':
+                        top -= 1
+                        bottom += 1
+                    else:
+                        left -= 1
+                        right += 1
+                """
                 if isLine:  # a line
                     # fetch data
                     if isLine == 'x':
@@ -1035,6 +1108,31 @@ class simplePDF2HTML(PDF2HTML):
                         table_raw_dash_lst.append(tmp_elem)
                     else:
                         table_outline_elem_lst.append(tmp_elem)
+        lines = []
+        points = {}
+        for x in layout:
+            if isinstance(x, LTLine):
+                left = x.x0
+                right = x.x1
+                top = x.y1
+                bottom = x.y0
+                lines.append([(x.x0, x.y0),(x.x1, x.y1)])
+        for seg in self.add_cross_point(lines, points):
+            direct = 'x'
+            if seg[0][0] == seg[1][0]:  # vertical
+                direct = 'y'
+            tmp_elem = {
+                'x0': seg[0][0],
+                'y0': seg[0][1],
+                'x1': seg[1][0],
+                'y1': seg[1][1],
+                'isLine': direct
+            }
+            table_outline_elem_lst.append(tmp_elem)
+
+        print len(table_raw_dash_lst),len(table_outline_elem_lst)
+
+    ###
 
         if max_stroke >= 0:
             bias = self.bias_param[0] * max_stroke  # 3 # 2 # 1.5
@@ -1612,6 +1710,8 @@ class simplePDF2HTML(PDF2HTML):
         # Step 4: 然后规范一下坐标值
         # 开始整理表格内容
         print "number of potential tables in this page is {0}".format(len(clean_tables_lst))
+        #self.show_page_layout(layout)
+        #self.show_page_layout_lines(layout, clean_tables_lst)
         try:
             raw_lines, raw_points, points_visited = self.get_tables_raw_frame(clean_tables_lst, bias)
         except Exception:
@@ -1633,14 +1733,19 @@ class simplePDF2HTML(PDF2HTML):
             test_value = point_list[test_point]
             debug_walk(test_point)
             print "debug walk done"
-
+        #self.show_page_layout_lines(layout, raw_lines)
 
         # step 5
+        #raw_points = self.add_cross_point(raw_lines, raw_points)
+        #self.show_page_layout_points(layout, raw_points)
         table_list, table_line_list, divider_list = self.get_tables_init_info(raw_points, raw_lines, points_visited)
+
+        print len(divider_list)
+        #
 
         # step 6
         divider_list = self.get_tables_divider_list(table_list, table_line_list, divider_list, bias)
-        #self.show_page_layout_post(layout, table_line_list)
+        #self.show_page_layout_post(layout, divider_list)
         # test
 
 
@@ -1680,6 +1785,83 @@ class simplePDF2HTML(PDF2HTML):
     def get_table_frame(self, table_points_list, bias, table_divider_list):
         ret_val = TableFrame(table_points_list, bias, table_divider_list)
         return ret_val
+
+    def add_cross_point(self, lines, points):
+
+        local_lines = copy.copy(lines)
+        tables = []
+        #get tables
+        while len(local_lines) > 0:
+            top_y = 0
+            table = []
+            top_id = -1
+            for i in range(len(local_lines)):
+                l = local_lines[i]
+                if l[0][1] == l[1][1]: #水平线
+                    if l[0][1] > top_y:
+                        top_y = l[0][1]
+                        top_id = i
+            bottom_y = top_y
+            for j in range(len(local_lines)):
+                l = local_lines[j]
+                if l[0][0] == l[1][0]:  # 垂直线
+                    print max(l[0][1],l[1][1]),top_y,l
+                    if abs(top_y - max(l[0][1],l[1][1])) < 1:
+                        if min(l[0][1],l[1][1]) < bottom_y:
+                            bottom_y = min(l[0][1],l[1][1])
+            if bottom_y == top_y:
+                del local_lines[top_id]
+                continue
+            for k in range(len(local_lines)-1, -1, -1):
+                l = local_lines[k]
+                if min(l[0][1],l[1][1]) > bottom_y-1 and  max(l[0][1],l[1][1]) <top_y+1:
+                    table.append(l)
+                    del local_lines[k]
+
+            tables.append(table)
+
+        segs = []
+        for idx,t_lines in enumerate(tables):
+            x_lines = []
+            y_lines = []
+            points_od = {}
+            x_seg_points = {}
+            y_seg_points = {}
+            for l in t_lines:
+                if l[0][1] == l[1][1]:
+                    x_lines.append(l)
+                elif l[0][0] == l[1][0]:
+                    y_lines.append(l)
+            for x_l in x_lines:
+                for y_l in y_lines:
+                    k = (y_l[0][0],x_l[0][1])
+                    points_od[k] = [0]
+
+            for k in points_od:
+                if k[1] not in x_seg_points:
+                    x_seg_points[k[1]] = []
+                x_seg_points[k[1]].append(k[0])
+            for y in x_seg_points:
+                x_seg_points[y].sort()
+                last_x= x_seg_points[y][0]
+                for i in range(1,len(x_seg_points[y])):
+                    segs.append([(last_x,y),(x_seg_points[y][i],y)])
+                    last_x = x_seg_points[y][i]
+
+
+            for k in points_od:
+                if k[0] not in y_seg_points:
+                    y_seg_points[k[0]] = []
+                y_seg_points[k[0]].append(k[1])
+
+            for x in y_seg_points:
+                y_seg_points[x].sort()
+                last_y = y_seg_points[x][0]
+                for i in range(1, len(y_seg_points[x])):
+                    segs.append([(x, last_y), (x, y_seg_points[x][i])])
+                    last_y = y_seg_points[x][i]
+        print len(segs)
+        return segs
 
 
 class TableFrame(object):
@@ -1896,7 +2078,8 @@ class Draw(object):
         turtle.clear()
         turtle.speed(0)
         turtle.screensize(canvwidth=size_x, canvheight=size_y, bg=None)
-
+    def done(self):
+        turtle.done()
     def set_color(self, color_string):
         turtle.pencolor(color_string)
 
