@@ -28,7 +28,7 @@ def get_PDF_fnames(directory):
 #fname_list = ['data2/2016-04-25-1202237114.PDF'] #9 # 5 # 11 #12 # 14
 #'data2/bad_case/2014-12-29-64666524.PDF'
 #fname_list = ['data2/bad_case/2016-10-12-1202754801.PDF']#'data2/2016-08-11-1202559993.PDF'] # table testcase
-fname_list = ['pdf/good/2016-04-21-1202221049.PDF']
+fname_list = ['pdf/good/2017-04-10-1203280460.PDF']
 #fname_list = ['pdf/good/2016-03-30-1202104342.PDF']
 #fname_list=['pdf/good/2016-04-30-1202282034.PDF']
 # fname_list = ['data/2016-03-12-1202040147.PDF']

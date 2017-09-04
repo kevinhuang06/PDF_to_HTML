@@ -78,6 +78,8 @@ base_struct = {
   "Message": None
 }
 
+def same(x,y):
+    return abs(x-y) < 1
 
 def get_corners(line):
     text = ""
@@ -367,8 +369,10 @@ class simplePDF2HTML(PDF2HTML):
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
             page_idx = idx + 1
-            #if page_idx <=2:
-            #    continue
+            if page_idx <45:
+                continue
+            if page_idx == 50:
+                break
             if idx > 0:
                 #record last page
                 #print "#%s#"%self.page_html[-5:]
@@ -899,12 +903,12 @@ class simplePDF2HTML(PDF2HTML):
         draw.set_color("black")
         draw.square(page_range["left"], page_range["right"], page_range["top"], page_range["bottom"])
 
-        #for p in lines:
+        for p in lines:
             #for p in tline:
-        #    draw.line(p[0][0], p[0][1], p[1][0], p[1][1])
-        for t_lines in lines:
-            for p in t_lines:
-                draw.line(p['x0'], p['y0'], p['x1'], p['y1'])
+            draw.line(p[0][0], p[0][1], p[1][0], p[1][1])
+        #for t_lines in lines:
+        #    for p in t_lines:
+        #        draw.line(p['x0'], p['y0'], p['x1'], p['y1'])
 
         draw.done()
         time.sleep(10)
@@ -1117,6 +1121,7 @@ class simplePDF2HTML(PDF2HTML):
                 top = x.y1
                 bottom = x.y0
                 lines.append([(x.x0, x.y0),(x.x1, x.y1)])
+
         for seg in self.add_cross_point(lines, points):
             direct = 'x'
             if seg[0][0] == seg[1][0]:  # vertical
@@ -1370,7 +1375,7 @@ class simplePDF2HTML(PDF2HTML):
                         if idx_right == -1:
                             raw_points_x.append(right)
                         fixed_y = (top + bottom) / 2.0
-                        fixed_y = int(fixed_y)
+                        #fixed_y = int(fixed_y)
                         idx_fixed_y = self.get_closest_idx(fixed_y, raw_points_y, bias)
                         if idx_fixed_y >= 0:
                             fixed_y = raw_points_y[idx_fixed_y]
@@ -1387,7 +1392,7 @@ class simplePDF2HTML(PDF2HTML):
                         if idx_bottom == -1:
                             raw_points_y.append(bottom)
                         fixed_x = (left + right) / 2.0
-                        fixed_y = int(fixed_x)
+                        #fixed_x = int(fixed_x)
                         idx_fixed_x = self.get_closest_idx(fixed_x, raw_points_x, bias)
                         if idx_fixed_x >= 0:
                             fixed_x = raw_points_x[idx_fixed_x]
@@ -1513,7 +1518,7 @@ class simplePDF2HTML(PDF2HTML):
     def get_tables_divider_list(self, table_list, table_line_list, divider_list, bias):
         # get the regularized lines
         for i in range(len(table_list)):
-            print i, len(table_list)
+            print "table", i, len(table_list)
             tmp_xs = []
             tmp_ys = []
             tmp_table = table_list[i]
@@ -1628,11 +1633,12 @@ class simplePDF2HTML(PDF2HTML):
                     end_line_idx = -1
                     # print pt1, pt2
                     for idx in range(len(tmp_ys)):
-                        if tmp_ys[idx] == pt1[1]:
+                        if same(tmp_ys[idx], pt1[1]):
                             start_line_idx = idx
-                        if tmp_ys[idx] == pt2[1]:
+                        if same(tmp_ys[idx], pt2[1]):
                             end_line_idx = idx
                             break  # sorted
+
                     assert start_line_idx != -1 and end_line_idx != -1, "unrecorded point axis {0} or {1}, not recorded in {2}".format(
                         pt1[1], pt2[1], tmp_ys)
                     for idx in range(start_line_idx, end_line_idx):
@@ -1645,11 +1651,12 @@ class simplePDF2HTML(PDF2HTML):
                     end_line_idx = -1
                     # print pt1, pt2
                     for idx in range(len(tmp_xs)):
-                        if tmp_xs[idx] == pt1[0]:
+                        if same(tmp_xs[idx], pt1[0]):
                             start_line_idx = idx
-                        if tmp_xs[idx] == pt2[0]:
+                        if same(tmp_xs[idx], pt2[0]):
                             end_line_idx = idx
                             break  # because it was sorted
+
                     assert start_line_idx != -1 and end_line_idx != -1, "error happend when building the frame of the table"
                     for idx in range(start_line_idx, end_line_idx):
                         tmp_pt1 = (tmp_xs[idx], pt1[1])
@@ -1736,7 +1743,7 @@ class simplePDF2HTML(PDF2HTML):
         #self.show_page_layout_lines(layout, raw_lines)
 
         # step 5
-        #raw_points = self.add_cross_point(raw_lines, raw_points)
+
         #self.show_page_layout_points(layout, raw_points)
         table_list, table_line_list, divider_list = self.get_tables_init_info(raw_points, raw_lines, points_visited)
 
@@ -1805,12 +1812,12 @@ class simplePDF2HTML(PDF2HTML):
             for j in range(len(local_lines)):
                 l = local_lines[j]
                 if l[0][0] == l[1][0]:  # 垂直线
-                    print max(l[0][1],l[1][1]),top_y,l
-                    if abs(top_y - max(l[0][1],l[1][1])) < 1:
+                    #print max(l[0][1],l[1][1]),top_y,l
+                    if same(top_y , max(l[0][1],l[1][1])):
                         if min(l[0][1],l[1][1]) < bottom_y:
                             bottom_y = min(l[0][1],l[1][1])
             if bottom_y == top_y:
-                del local_lines[top_id]
+                del local_lines[top_id]  # 移除页眉的线
                 continue
             for k in range(len(local_lines)-1, -1, -1):
                 l = local_lines[k]
@@ -1832,6 +1839,7 @@ class simplePDF2HTML(PDF2HTML):
                     x_lines.append(l)
                 elif l[0][0] == l[1][0]:
                     y_lines.append(l)
+
             for x_l in x_lines:
                 for y_l in y_lines:
                     k = (y_l[0][0],x_l[0][1])
@@ -1867,7 +1875,7 @@ class simplePDF2HTML(PDF2HTML):
                 for i in range(1, len(y_seg_points[x])):
                     segs.append([(x, last_y), (x, y_seg_points[x][i])])
                     last_y = y_seg_points[x][i]
-        print len(segs)
+        #print len(segs)
         return segs
 
 
