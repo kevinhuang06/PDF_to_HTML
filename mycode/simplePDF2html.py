@@ -369,10 +369,10 @@ class simplePDF2HTML(PDF2HTML):
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
             page_idx = idx + 1
-            if page_idx <45:
-                continue
-            if page_idx == 50:
-                break
+            #if page_idx < 75:
+            #    continue
+            #if page_idx == 76:
+            #    break
             if idx > 0:
                 #record last page
                 #print "#%s#"%self.page_html[-5:]
@@ -903,12 +903,12 @@ class simplePDF2HTML(PDF2HTML):
         draw.set_color("black")
         draw.square(page_range["left"], page_range["right"], page_range["top"], page_range["bottom"])
 
-        for p in lines:
+        #for p in lines:
             #for p in tline:
-            draw.line(p[0][0], p[0][1], p[1][0], p[1][1])
-        #for t_lines in lines:
-        #    for p in t_lines:
-        #        draw.line(p['x0'], p['y0'], p['x1'], p['y1'])
+        #    draw.line(p[0][0], p[0][1], p[1][0], p[1][1])
+        for p in lines:
+            #for p in t_lines:
+            draw.line(p['x0'], p['y0'], p['x1'], p['y1'])
 
         draw.done()
         time.sleep(10)
@@ -1691,6 +1691,7 @@ class simplePDF2HTML(PDF2HTML):
         bias, table_outline_elem_lst, table_raw_dash_lst, dashline_parser_xs, dashline_parser_ys = \
             self.get_tables_elements(layout)
 
+        #self.show_page_layout_lines(layout, table_outline_elem_lst)
         # step 2
         table_dashlines = self.get_tables_dashlines(table_raw_dash_lst, bias)
         print table_dashlines
@@ -1708,9 +1709,10 @@ class simplePDF2HTML(PDF2HTML):
         dashline_parser_xs.sort()
         dashline_parser_ys.sort()
 
+
+
         table_outline_elem_lst = self.get_tables_elements_all(table_outline_elem_lst, table_dashlines,
                                                               dashline_parser_xs, dashline_parser_ys)
-
         # step 3: 粗略分出不同表格的子区域
         clean_tables_lst = self.get_tables_areas(table_outline_elem_lst, bias)
 
@@ -1718,7 +1720,7 @@ class simplePDF2HTML(PDF2HTML):
         # 开始整理表格内容
         print "number of potential tables in this page is {0}".format(len(clean_tables_lst))
         #self.show_page_layout(layout)
-        #self.show_page_layout_lines(layout, clean_tables_lst)
+
         try:
             raw_lines, raw_points, points_visited = self.get_tables_raw_frame(clean_tables_lst, bias)
         except Exception:
@@ -1841,16 +1843,21 @@ class simplePDF2HTML(PDF2HTML):
                     y_lines.append(l)
 
             for x_l in x_lines:
+                min_x = min(x_l[0][0], x_l[1][0])
+                max_x = max(x_l[0][0], x_l[1][0])
                 for y_l in y_lines:
                     k = (y_l[0][0],x_l[0][1])
                     # y_line
                     min_y = min(y_l[0][1], y_l[1][1])
                     max_y = max(y_l[0][1], y_l[1][1])
                     # x_line
-                    min_x = min(x_l[0][0], x_l[1][0])
-                    max_x = max(x_l[0][0], x_l[1][0])
+
                     if  (k[0] > min_x-1 and k[0]<max_x+1) and (k[1]>min_y-1 and k[1]<max_y +1):
                         points_od[k] = [0]
+                # 确保最左列、最右列的点 保留下来
+                y_of_x_line = x_l[0][1]
+                points_od[(min_x,y_of_x_line)]=[0]
+                points_od[(max_x,y_of_x_line)] = [0]
 
             for k in points_od:
                 if k[1] not in x_seg_points:
