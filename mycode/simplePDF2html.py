@@ -89,8 +89,10 @@ def get_corners(line):
             if u' '!=char.get_text():
                 char_list.append(char)
             text += char.get_text()
+    #print text
     if len(char_list) > 0:
         return (char_list[0].x0, line.y0),(char_list[-1].x1,line.y1)
+
     return (line.x0,line.y0) , (line.x1,line.y1)
 
 class PDF2HTML(object):
@@ -369,9 +371,9 @@ class simplePDF2HTML(PDF2HTML):
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
             page_idx = idx + 1
-            #if page_idx < 75:
+            #if page_idx < 56:
             #    continue
-            #if page_idx == 76:
+            #if page_idx == 57:
             #    break
             if idx > 0:
                 #record last page
@@ -903,12 +905,13 @@ class simplePDF2HTML(PDF2HTML):
         draw.set_color("black")
         draw.square(page_range["left"], page_range["right"], page_range["top"], page_range["bottom"])
 
-        #for p in lines:
-            #for p in tline:
-        #    draw.line(p[0][0], p[0][1], p[1][0], p[1][1])
         for p in lines:
+            #for p in tline:
+            draw.line(p[0][0], p[0][1], p[1][0], p[1][1])
+            print p[0][0], p[0][1], p[1][0], p[1][1]
+        #for p in lines:
             #for p in t_lines:
-            draw.line(p['x0'], p['y0'], p['x1'], p['y1'])
+        #    draw.line(p['x0'], p['y0'], p['x1'], p['y1'])
 
         draw.done()
         time.sleep(10)
@@ -1842,9 +1845,17 @@ class simplePDF2HTML(PDF2HTML):
                 elif l[0][0] == l[1][0]:
                     y_lines.append(l)
 
+            #找出最左，最右的垂直线
+
+            left = 10000
+            right = 0
+            left_points = []
+            right_points = []
             for x_l in x_lines:
                 min_x = min(x_l[0][0], x_l[1][0])
                 max_x = max(x_l[0][0], x_l[1][0])
+                left = min(min_x, left)
+                right = max(max_x, right)
                 for y_l in y_lines:
                     k = (y_l[0][0],x_l[0][1])
                     # y_line
@@ -1854,10 +1865,19 @@ class simplePDF2HTML(PDF2HTML):
 
                     if  (k[0] > min_x-1 and k[0]<max_x+1) and (k[1]>min_y-1 and k[1]<max_y +1):
                         points_od[k] = [0]
-                # 确保最左列、最右列的点 保留下来
-                y_of_x_line = x_l[0][1]
-                points_od[(min_x,y_of_x_line)]=[0]
-                points_od[(max_x,y_of_x_line)] = [0]
+                y0 = x_l[0][1]
+                left_points.append([min_x,y0])
+                right_points.append([max_x,y0])
+
+            if left is not 10000:
+                for p in left_points:
+                    points_od[(left,p[1])] = [0]
+            if right is not 0:
+                for p in right_points:
+                    points_od[(right,p[1])]= [0]
+
+
+
 
             for k in points_od:
                 if k[1] not in x_seg_points:
