@@ -67,3 +67,15 @@ last_x = t[-1][1][0]t[-1][1])):
                         }
                         last_x =  t[-1][1][ii]
                         table_outline_elem_lst.append(tmp_elem)
+
+for idx, t in enumerate(my_tables):
+    last_line = t[0]
+for i in range(1, len(t)):
+    extend_point = []
+for new_p in last_line[1]:
+    start = t[i][1][0]
+end = t[i][1][-1]
+if new_p < start - 1 or new_p > end + 1:
+    extend_point.append(new_p)
+t[i][1].extend(extend_point)
+t[i][1].sort()

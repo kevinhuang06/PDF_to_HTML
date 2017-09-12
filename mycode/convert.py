@@ -34,9 +34,9 @@ fname_list = []
 #fname_list=['pdf/bad_html/2013-04-22-62408598.PDF']
 # fname_list = ['data/2016-03-12-1202040147.PDF']
 # fname_list = ['data/simple1.PDF', 'data/simple2.PDF', 'data/simple3.PDF']
-#fname_list = ['pdf/table/table_example_19.pdf']
+fname_list = ['pdf/table/table_example_19.pdf']
 
-fname_list = ['pdf/table/table_56_2016-08-26-1202648670.pdf']
+#fname_list = ['pdf/table/table_56_2016-08-26-1202648670.pdf']
 # fname_list = ['data/2016-01-19-1201924052.PDF']
 # fname_list = ['data/2016-01-19-1201924054.PDF']
 # fname_list = get_PDF_fnames('data/')

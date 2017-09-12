@@ -1406,18 +1406,27 @@ class simplePDF2HTML(PDF2HTML):
                             top_line = my_tables[pair[1]][-1]
                             # 向下合并，当表头
                             # 说明表头存在单元格合并，需要增加水平线
-                            ave_y = (top_line[0] + l[0]) / 2
-                            split_l = (ave_y, top_line[1])
-                            my_tables[pair[1]].append(split_l)
-                            add_segs(top_line[1][1:], ave_y, table_outline_elem_lst)
+                            if len(top_line[1])  > len(l[1]):
+                                ave_y = (top_line[0] + l[0]) / 2
+                                split_l = (ave_y, top_line[1])
+                                my_tables[pair[1]].append(split_l)
+                                add_segs(top_line[1][1:], ave_y, table_outline_elem_lst)
                             my_tables[pair[1]].append(l)
 
                         del my_tables[pair[0]]
                 print len(my_tables)
             except Exception,ex:
                 pass
-        # 增加 缺失的线
-
+        # 给内部的短的分段，补充他没有描述的区域以外的点
+            for idx, t in enumerate(my_tables):
+                del_list = [] 
+                num_cells = len(t[0][1])
+                for i in range(1,len(t)-1):
+                    num_cell_line = len(t[i][1])
+                    if num_cells - num_cell_line > 2:
+                        del_list.insert(0, i)
+                for del_id in del_list:
+                    del my_tables[idx][del_id]
             for idx,t in enumerate(my_tables):
                 #找到 最大y,最小y 切分数据
                 t.sort(key=lambda x: x[0], reverse=True)
@@ -2040,7 +2049,7 @@ class simplePDF2HTML(PDF2HTML):
         bias, table_outline_elem_lst, table_raw_dash_lst, dashline_parser_xs, dashline_parser_ys = \
             self.get_tables_elements(layout,text_cols)
 
-        #self.show_page_layout_lines(layout, table_outline_elem_lst)
+        self.show_page_layout_lines(layout, table_outline_elem_lst)
         # step 2
         table_dashlines = self.get_tables_dashlines(table_raw_dash_lst, bias)
         print table_dashlines
