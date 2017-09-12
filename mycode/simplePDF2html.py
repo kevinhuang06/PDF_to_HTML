@@ -1407,9 +1407,9 @@ class simplePDF2HTML(PDF2HTML):
                             # 向下合并，当表头
                             # 说明表头存在单元格合并，需要增加水平线
                             ave_y = (top_line[0] + l[0]) / 2
-                            split_l = (ave_y, top_line[1][1:])
+                            split_l = (ave_y, top_line[1])
                             my_tables[pair[1]].append(split_l)
-                            add_segs(split_l[1], ave_y, table_outline_elem_lst)
+                            add_segs(top_line[1][1:], ave_y, table_outline_elem_lst)
                             my_tables[pair[1]].append(l)
 
                         del my_tables[pair[0]]
@@ -2040,7 +2040,7 @@ class simplePDF2HTML(PDF2HTML):
         bias, table_outline_elem_lst, table_raw_dash_lst, dashline_parser_xs, dashline_parser_ys = \
             self.get_tables_elements(layout,text_cols)
 
-        self.show_page_layout_lines(layout, table_outline_elem_lst)
+        #self.show_page_layout_lines(layout, table_outline_elem_lst)
         # step 2
         table_dashlines = self.get_tables_dashlines(table_raw_dash_lst, bias)
         print table_dashlines
