@@ -8,7 +8,7 @@ import sys
 import copy
 import time
 import json
-
+#import numpy as np
 
 import operator # 为了排序
 import turtle # 为了可视化显示检测到的布局
@@ -78,22 +78,215 @@ base_struct = {
   "Message": None
 }
 
-def same(x,y):
-    return abs(x-y) < 1
+def add_segs(xs,y,table_outline_elem_lst):
+    last_x = xs[0]
+    for i in range(len(xs)):
+        tmp_elem = {
+            'x0': last_x,
+            'x1': xs[i],
+            'y0': y,
+            'y1': y,
+            'isLine': 'x'
+        }
+        last_x = xs[i]
+        table_outline_elem_lst.append(tmp_elem)
 
-def get_corners(line):
+def in_range(value , bottom, up):
+    b = min( bottom, up)
+    u = max( bottom, up)
+    if value > b and  value< u:
+        return True
+    return False
+
+def same(x,y):
+    return abs(x-y) < 1.1
+
+def get_corners(line, flag):
     text = ""
     char_list = []
     for char in line:
         if isinstance(char, LTChar):
-            if u' '!=char.get_text():
+            if u''!=char.get_text().strip():
                 char_list.append(char)
             text += char.get_text()
-    #print text
-    if len(char_list) > 0:
-        return (char_list[0].x0, line.y0),(char_list[-1].x1,line.y1)
 
-    return (line.x0,line.y0) , (line.x1,line.y1)
+    #if flag:
+    #    print text
+
+
+    if len(char_list) > 0:
+        return (char_list[0].x0, line.y0),(char_list[-1].x1,line.y1),False
+
+    return (line.x0,line.y0) , (line.x1,line.y1),True
+
+def same_row(line, new_line):
+    bottom = line['box'][0][1]
+    up = line['box'][1][1]
+
+    #有一个点在 range中，就认为是相同的线
+    if new_line['box'][0][1]  > bottom-1 and new_line['box'][0][1]  < up+1:
+        return True
+    if new_line['box'][1][1]  > bottom-1 and new_line['box'][1][1]  < up+1:
+        return  True
+
+    return  False
+
+def same_cols(line, new_line):
+    left = line[0][0]
+    right = line[1][0]
+
+    if new_line[0][0]  > left-1 and new_line[0][0]  < right+1:
+        return True
+    if new_line[1][0]  > left-1 and new_line[1][0]  < right+1:
+        return  True
+
+    return  False
+
+def parse_page_to_lines(layout):
+    page_lines = []
+
+    for x in layout:
+        if (isinstance(x, LTTextBoxHorizontal)):
+
+            for miner_line in x:
+                if (isinstance(miner_line, LTTextLineHorizontal)):
+                    corner_ld, corner_ru, empty = get_corners(miner_line, False)
+                    #if empty:
+                    #    continue
+                    new_line = { 'box': [[corner_ld[0],corner_ld[1]], [corner_ru[0],corner_ru[1]]], \
+                                 'text_lines': [(corner_ld, corner_ru)]}
+
+                    for line in page_lines:
+                        if same_row(line, new_line):
+                            #合并的line, 更新数据
+                            # p0.x, p0.y
+                            line['box'][0][0] = min(line['box'][0][0], new_line['box'][0][0])
+                            line['box'][0][1] = min(line['box'][0][1], new_line['box'][0][1])
+                            # p1.x, p1.y
+                            line['box'][1][0] = max(line['box'][1][0], new_line['box'][1][0])
+                            line['box'][1][1] = max(line['box'][1][1], new_line['box'][1][1])
+                            # find corresponding cols
+                            for idx,l in enumerate(line['text_lines']):
+                                if same_cols(l,new_line['box']):
+                                    #merge two text line ,防止文字多的行，被选为最大列
+                                    line['text_lines'][idx] =[
+                                        (min(line['text_lines'][idx][0][0] , new_line['box'][0][0]),min(line['text_lines'][idx][0][1] , new_line['box'][0][1])),\
+                                        (max(line['text_lines'][idx][1][0], new_line['box'][1][0]),max(line['text_lines'][idx][1][1], new_line['box'][1][1]))
+                                    ]
+                                    new_line = None
+                                    break
+                            if new_line:
+                                line['text_lines'].append(new_line['text_lines'][0])
+                                get_corners(miner_line, True)
+                                new_line = None
+                            break
+
+
+                    #没找到可以合并的line
+                    if new_line:
+                        page_lines.append(new_line)
+                    if len(page_lines) == 11:
+                        pass
+    len_last_line = 1
+    tables = []
+    text_cols = []
+
+    left_bound = 10000
+    right_bound = 0
+
+    for l in page_lines:
+        print l['box'][1][1] - l['box'][0][1], len(l['text_lines']),  l['box'][1][0] - l['box'][0][0]
+        if left_bound > l['box'][0][0]:
+            left_bound = l['box'][0][0]
+        if right_bound < l['box'][1][0]:
+            right_bound = l['box'][1][0]
+
+        if len(l['text_lines']) > 1:
+            text_cols.append(l)
+            if len_last_line > 1:
+                tables[-1].append(l)
+            else:
+                tables.append([l])
+        len_last_line = len(l['text_lines'])
+    #到这里就可以画出所有的水平线了
+    print len(tables)
+    table_bound = []
+    for t in tables:
+        box = t[0]['box']
+        for i in range(1,len(t)):
+            row = t[i]['box']
+            box[0][0] = min(box[0][0], row[0][0])
+            box[0][1] = min(box[0][1], row[0][1])
+            box[1][0] = max(box[1][0], row[1][0])
+            box[1][1] = max(box[1][1], row[1][1])
+        table_bound.append(box)
+
+    # merge cols
+    return page_lines, text_cols
+
+    """
+    bounder_lines = []
+    for t in tables:
+        last_row = t[0]['box']
+        up_y = last_row[1][1] + 6
+        bounder_lines.append([[left_bound, up_y], [right_bound, up_y]])  # 做个max的限制
+        for i in range(1,len(t)):
+            y = (last_row[0][1] + t[i]['box'][1][1])/2
+            bounder_lines.append([[left_bound,y],[right_bound,y]])
+            last_row = t[i]['box']
+        bottom_y =  t[-1]['box'][0][1]-6
+        bounder_lines.append([[left_bound, bottom_y], [right_bound, bottom_y]])
+
+
+    col_tables =[]
+
+    for t in tables:
+    #计算 列box
+        max_cols = 0
+        row_id = 0
+
+        for idx,l in enumerate(t):
+            if len(l['text_lines']) > max_cols:
+                max_cols = len(l['text_lines'])
+                row_id = idx
+        table_col = []
+        #记录列数最大的列中的元素box
+        for tline in sorted(t[row_id]['text_lines'],key = lambda x:x[0][0]):
+            table_col.append({ 'box': [[tline[0][0],tline[0][1]],[tline[1][0],tline[1][1]]], 'text_cols': [tline]})
+
+        for idx, l in enumerate(t):
+            if idx == row_id:
+                continue
+            for tl in l['text_lines']:
+                same_cols_id = []
+                for k,col in enumerate(table_col):
+                    if same_cols(col['box'], tl):
+                        same_cols_id.append(k)
+                if len(same_cols_id) == 0:
+                    pass # no common col 考虑添加新的列， 可以考虑将table_col 初始化时的排序去掉。
+                elif len(same_cols_id) == 1:
+                    cid = same_cols_id[0]
+                    table_col[cid]['box'] = [
+                        (min(table_col[cid]['box'][0][0], tl[0][0]), min(table_col[cid]['box'][0][1], tl[0][1])),
+                        (max(table_col[cid]['box'][1][0], tl[1][0]), max(table_col[cid]['box'][1][1], tl[1][1]))
+                    ]
+                    table_col[cid]['text_cols'].append(tl)
+                else:
+                    # 该文本存在 cospan, 不做col合并
+                    pass
+        last_box = table_col[0]
+        for i in range(1,len(table_col)):
+            y0 = min(table_col[i]['box'][0][1], last_box['box'][0][1])
+            y1 = max(table_col[i]['box'][1][1], last_box['box'][1][1])
+            x0 = (table_col[i]['box'][0][0]+last_box['box'][1][0])/2
+            x1 = x0
+            last_box = table_col[i]
+            bounder_lines.append([[x0,max(y0-6,0)],[x1,y1+6]])#做个max的限制
+        col_tables.append(table_col)
+
+    """
+
+
 
 class PDF2HTML(object):
     def __init__(self, pdf_path, html_path, password="", codec='utf-8', bias_param=[1.5, 2]):
@@ -402,6 +595,10 @@ class simplePDF2HTML(PDF2HTML):
             self.interpreter.process_page(page)
             # 接受该页面的LTPage对象
             layout = self.device.get_result()
+
+            page_lines,text_cols = parse_page_to_lines(layout)
+            col_lines = []
+            #self.show_page_layout_lines(layout, col_lines)
             # 页面左右上下
             page_xrange = (layout.x0, layout.x1)
             page_yrange = (layout.y0, layout.y1)
@@ -415,7 +612,7 @@ class simplePDF2HTML(PDF2HTML):
             typical_length = content_width / major_size
             # get table contents in advance
             #self.show_page_layout(layout)
-            table_points_list, bias, table_divider_list = self.get_tables(layout)
+            table_points_list, bias, table_divider_list = self.get_tables(layout,text_cols)
             table_frames = []
             in_table = []  # true / false
             table_drawn = []  # true / false
@@ -456,7 +653,7 @@ class simplePDF2HTML(PDF2HTML):
                             for i in range(len(table_frames)):
                                 # table_frames[i]
 
-                                corner1,corner2 = get_corners(line)
+                                corner1,corner2,empty = get_corners(line, False)
 
                                 if table_frames[i].is_in_range(corner1) and table_frames[i].is_in_range(corner2):
                                     table_idx = i
@@ -598,6 +795,8 @@ class simplePDF2HTML(PDF2HTML):
                     actual_left = map_indents[location[0]]
                     indent = self.get_indent(actual_left, major_indents)
                     align = self.get_align(content_xrange, location, line_width, fontsize, major_size, debug=text)
+                    if fontsize  == 0:
+                        fontsize = 12
                     length = line_width / fontsize
                     # print x.x0, x.x1, x.y0, x.y1
                     # print text
@@ -905,13 +1104,15 @@ class simplePDF2HTML(PDF2HTML):
         draw.set_color("black")
         draw.square(page_range["left"], page_range["right"], page_range["top"], page_range["bottom"])
 
-        for p in lines:
-            #for p in tline:
-            draw.line(p[0][0], p[0][1], p[1][0], p[1][1])
-            print p[0][0], p[0][1], p[1][0], p[1][1]
         #for p in lines:
+            #for p in tline['box']:
+            #p = tline['box']
+        #    draw.line(p[0][0], p[0][1], p[1][0], p[1][1])
+        #    print p[0][0], p[0][1], p[1][0], p[1][1]
+        #    draw.square(p[0][0],p[1][0], p[1][1],p[0][1])
+        for p in lines:
             #for p in t_lines:
-        #    draw.line(p['x0'], p['y0'], p['x1'], p['y1'])
+            draw.line(p['x0'], p['y0'], p['x1'], p['y1'])
 
         draw.done()
         time.sleep(10)
@@ -987,7 +1188,7 @@ class simplePDF2HTML(PDF2HTML):
         for x in layout:
             isLine = False
             if (isinstance(x, LTTextBoxHorizontal)):
-                """
+
                 for line in x:
                     # print line # LTTextLine
                     #draw.set_color("green")
@@ -997,15 +1198,20 @@ class simplePDF2HTML(PDF2HTML):
                         # print char # LTChar / LTAnno
                         if isinstance(char, LTChar):
                             draw.set_color("brown")
-                            #draw.square(char.x0, char.x1, char.y1, char.y0)
-                            #print char.get_text()
+                            res = re.sub(r'\s+', '', char.get_text())
+                            if  len(res) > 0:
+                                draw.square(char.x0, char.x1, char.y1, char.y0)
+                            else:
+                                print "#%s#"%char.get_text()
+                            print char.get_text()
                         elif isinstance(char, LTChar):
                             draw.set_color("blue")
                             draw.square(char.x0, char.x1, char.y1, char.y0)
                 draw.set_color("black")
-                """
+
                 pass
             elif (isinstance(x, LTRect)):
+
                 isLine = self.is_line(x)
 
                 #if isLine:
@@ -1019,6 +1225,7 @@ class simplePDF2HTML(PDF2HTML):
                 # raw_input()
                 draw.set_color("blue")
 
+
             left = x.x0
             right = x.x1
             top = x.y1
@@ -1026,15 +1233,16 @@ class simplePDF2HTML(PDF2HTML):
             print "left:{0}, right: {1}, top: {2}, bottom: {3}".format(left, right, top, bottom)
             if isLine == 'x':
                 fixed_y = (top + bottom) / 2.0
-                draw.line(left, fixed_y, right, fixed_y)
+                #draw.line(left, fixed_y, right, fixed_y)
             elif isLine == 'y':
                 fixed_x = (left + right) / 2.0
-                draw.line(fixed_x, top, fixed_x, bottom)
+                #draw.line(fixed_x, top, fixed_x, bottom)
             else:
                 pass
                 #if (right - left) > 12:
                 #    print right - left
                 #    draw.square(left, right, top, bottom)
+
         draw.done()
         time.sleep(10)
         #return layout
@@ -1051,12 +1259,15 @@ class simplePDF2HTML(PDF2HTML):
     #################
     # steps in get_tables
     # step 1
-    def get_tables_elements(self, layout):
+    def get_tables_elements(self, layout, text_cols):
         max_stroke = -1
         table_outline_elem_lst = []  # contents: {'x0': x0, 'x1': x1, 'y0': y0, 'y1': y1, 'isLine': isLine}
         table_raw_dash_lst = []
         dashline_parser_xs = []
         dashline_parser_ys = []
+        y_and_its_xs = {}
+        num_horizon_line = 0
+        num_vertical_line = 0
         for x in layout:
             # if(isinstance(x, LTRect)):
             if isinstance(x, LTRect) or isinstance(x, LTFigure):
@@ -1081,6 +1292,7 @@ class simplePDF2HTML(PDF2HTML):
                 if isLine:  # a line
                     # fetch data
                     if isLine == 'x':
+                        num_horizon_line += 1
                         line_stroke = top - bottom
                         shared_y = (top + bottom) / 2.0
                         if shared_y not in dashline_parser_ys:
@@ -1089,7 +1301,20 @@ class simplePDF2HTML(PDF2HTML):
                             dashline_parser_xs.append(left)
                         if right not in dashline_parser_xs:
                             dashline_parser_xs.append(right)
+                        flag = True
+                        for k in y_and_its_xs:
+                            if same(shared_y, k):
+                                if not same(y_and_its_xs[k][-1],left):
+                                    y_and_its_xs[k].append(left)
+                                if not same(y_and_its_xs[k][-1], right):
+                                    y_and_its_xs[k].append(right)
+                                flag = False
+                        if flag:
+                            y_and_its_xs[shared_y] = []
+                            y_and_its_xs[shared_y].append(left)
+                            y_and_its_xs[shared_y].append(right)
                     elif isLine == 'y':
+                        num_vertical_line +=1
                         line_stroke = right - left
                         shared_x = (left + right) / 2.0
                         if shared_x not in dashline_parser_xs:
@@ -1115,6 +1340,127 @@ class simplePDF2HTML(PDF2HTML):
                         table_raw_dash_lst.append(tmp_elem)
                     else:
                         table_outline_elem_lst.append(tmp_elem)
+        # split_tables
+        if  num_horizon_line > 2 and num_vertical_line < 2:
+            sorted_lines = sorted(y_and_its_xs.iteritems(), key=lambda x: x[0])
+            last_line = sorted_lines[0]
+            my_tables = [[last_line]]
+            for i in range(1, len(sorted_lines)):
+                # 分段数相同，位置完全相等
+                same_table = False
+                same_cc = 0
+                if len(last_line[1]) == len(sorted_lines[i][1]):
+                    same_table = True
+                    for k in range(len(last_line)):
+                        if not same(last_line[1][k], sorted_lines[i][1][k]):
+                            same_table = False
+                if same_table:
+                    my_tables[-1].append(sorted_lines[i])
+                else:
+                    my_tables.append([sorted_lines[i]])
+                last_line = sorted_lines[i]
+            print len(my_tables)
+
+            single_table_id = []
+            # 把单一线 添加到临近的表格上去
+            for idx, t in enumerate(my_tables):
+                if len(t) == 1:
+                    single_table_id.append(idx)
+            #单一线和其他数据的分段数不同，若是在表头处，需要添加一条水平直线，对表头做切割。
+
+            merge_pair = []
+            for idx in single_table_id:
+                prex_line = []
+                next_line = []
+                if idx > 0:
+                    prex_line = my_tables[idx - 1][-1][1]
+                if idx + 1 < len(my_tables):
+                    next_line = my_tables[idx + 1][0][1]
+                same_prex = 0
+                same_next = 0
+                for p in my_tables[idx][0][1]:
+                    for p_prex in prex_line:
+                        if same(p, p_prex):
+                            same_prex += 1
+                    for p_next in next_line:
+                        if same(p, p_next):
+                            same_next += 1
+                if same_next >= same_prex:
+                    if same_next > 1:
+                        merge_pair.append((idx, idx + 1))
+                else:
+                    if same_prex >1:
+                        if (idx-1, idx) not in merge_pair:
+                            merge_pair.append((idx, idx - 1))
+
+            print len(merge_pair)
+            # 反向遍历列表,
+            try:
+                for pair in merge_pair[::-1]:
+                    for l in my_tables[pair[0]]:
+                        print l
+                    # 0 是下边的table, 1 是上边的table
+                        if pair[0] < pair[1]:
+                            my_tables[pair[1]].insert(0, l)
+                        else:
+                            top_line = my_tables[pair[1]][-1]
+                            # 向下合并，当表头
+                            # 说明表头存在单元格合并，需要增加水平线
+                            ave_y = (top_line[0] + l[0]) / 2
+                            split_l = (ave_y, top_line[1][1:])
+                            my_tables[pair[1]].append(split_l)
+                            add_segs(split_l[1], ave_y, table_outline_elem_lst)
+                            my_tables[pair[1]].append(l)
+
+                        del my_tables[pair[0]]
+                print len(my_tables)
+            except Exception,ex:
+                pass
+        # 增加 缺失的线
+
+            for idx,t in enumerate(my_tables):
+                #找到 最大y,最小y 切分数据
+                t.sort(key=lambda x: x[0], reverse=True)
+                up = t[0][0] #top y
+                bottom = t[-1][0]
+                ys = []
+                last_y = 0
+                text_box = []
+                for l in text_cols:
+                    if in_range(l['box'][0][1], bottom ,up):
+                        text_box.append([l['box'][0][1],l['box'][1][1]])
+                text_box.sort(key= lambda x:x[0])
+                if len(text_box) == 0:
+                    break
+                last_box = text_box[0]
+                show_up = False
+                for i in range(1,len(text_box)):
+                    y = (last_box[1] + text_box[i][0])/2
+                    last_box = text_box[i]
+                    ys.append(y)
+                    print y
+                    my_tables[idx].append((y,t[-1][1]))
+                    #增加横线
+                    add_segs(t[-1][1], y, table_outline_elem_lst)
+
+
+            for t in my_tables:
+                t.sort(key=lambda x: x[0], reverse=True)
+                for i in range(1, len(t)):
+                    last_line = t[i - 1]
+                    for j in range(len(last_line[1])):
+
+                        x = last_line[1][j]
+                        tmp_elem = {
+                            'x0': x,
+                            'x1': x,
+                            'y0': last_line[0],
+                            'y1': t[i][0],
+                            'isLine': 'y'
+                        }
+                        table_outline_elem_lst.append(tmp_elem)
+
+
         lines = []
         points = {}
         for x in layout:
@@ -1673,7 +2019,7 @@ class simplePDF2HTML(PDF2HTML):
 
     #################
 
-    def get_tables(self, layout):
+    def get_tables(self, layout,text_cols):
         debug = self.debug_mode_on  # False #True
         # 在debug状态画出页码的边框
         if debug:
@@ -1692,9 +2038,9 @@ class simplePDF2HTML(PDF2HTML):
 
         # step 1
         bias, table_outline_elem_lst, table_raw_dash_lst, dashline_parser_xs, dashline_parser_ys = \
-            self.get_tables_elements(layout)
+            self.get_tables_elements(layout,text_cols)
 
-        #self.show_page_layout_lines(layout, table_outline_elem_lst)
+        self.show_page_layout_lines(layout, table_outline_elem_lst)
         # step 2
         table_dashlines = self.get_tables_dashlines(table_raw_dash_lst, bias)
         print table_dashlines

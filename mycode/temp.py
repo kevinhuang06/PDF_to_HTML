@@ -1,0 +1,69 @@
+for t in table_bound:
+    min_upbound = 10000
+    max_lower_bound = 0
+    for tmp_elem in table_outline_elem_lst:
+        if tmp_elem['y0'] > t[1][1]:
+            if tmp_elem['y0'] < min_upbound:
+                min_upbound = tmp_elem['y0']  # 更新最小上界
+
+        if tmp_elem['y0'] < t[0][1]:
+            if tmp_elem['y0'] > max_lower_bound:
+                max_lower_bound = tmp_elem['y0']  # 更新最大下界
+    bounds_x = {}
+
+    # 下边这两个用来补 缺失的x-seg
+    lower_bounds = []
+    upper_bounds = []
+    for tmp_elem in table_outline_elem_lst:
+        if same(tmp_elem['y0'], min_upbound):
+            bounds_x[tmp_elem['x0']] = 'left'
+            bounds_x[tmp_elem['x1']] = 'right'
+            lower_bounds.append(tmp_elem)
+        if same(tmp_elem['y0'], max_lower_bound):
+            upper_bounds.append(tmp_elem)
+
+    for k in bounds_x:
+        tmp_elem = {
+            'x0': k,
+            'x1': k,
+            'y0': max_lower_bound,
+            'y1': min_upbound,
+            'isLine': 'y'
+        }
+
+  #使用文本帮助合并表格
+  for text_line in text_cols :
+            last_tid = 0
+            merge = None
+            for i in range(1,len(my_tables)):
+                y0 = text_line['box'][0][1]
+                top_y = my_tables[last_tid][-1][0]
+                bottom_y =  my_tables[i][0][0]
+                if y0 >  top_y and y0 < bottom_y:
+                    # 处于两个table间，合并两个table
+                    merge = [last_tid,i]
+                    break
+                last_tid = i
+            if merge:
+                for line in my_tables[merge[1]]:
+                    my_tables[merge[0]].append(line)
+                del my_tables[merge[1]]
+
+        print len(my_tables)
+# 移除 太短的线
+for idx in range(len(t) - 1, -1, -1):
+    length = t[idx][1][-1] - t[idx][1][0]
+    if len(t[idx][1]) == 1:
+        del t[idx]
+
+
+last_x = t[-1][1][0]t[-1][1])):
+                        tmp_elem = {
+                        'x0': last_x,
+                        'x1': t[-1][1][ii],
+                        'y0': y,
+                        'y1': y,
+                        'isLine': 'x'
+                        }
+                        last_x =  t[-1][1][ii]
+                        table_outline_elem_lst.append(tmp_elem)
