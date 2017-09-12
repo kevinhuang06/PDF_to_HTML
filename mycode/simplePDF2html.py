@@ -507,8 +507,8 @@ class simplePDF2HTML(PDF2HTML):
                 # raw_input()
                 # print self.document._cached_objs
                 # for title in self.outlines_dict:
-                # 	print title
-                # 	print self.outlines_dict[title]
+                #     print title
+                #     print self.outlines_dict[title]
         # 创建一个PDF资源管理器对象来存储共享资源
         self.rsrcmgr = PDFResourceManager()
         # 创建一个PDF设备对象
@@ -874,8 +874,8 @@ class simplePDF2HTML(PDF2HTML):
         self.write('</p>')
 
     # self.write('<a style="font-size:{2}px;font-weight:{3};text-indent:{4}em;" align="left" href="#{1}">{0}</a>'.format(\
-    #		outline_title, ref_id, font_size, font_weight, indent
-    #	))
+    #        outline_title, ref_id, font_size, font_weight, indent
+    #    ))
 
     def get_outline_idx(self, goal_string):
         goal_idx = -1
@@ -1268,6 +1268,8 @@ class simplePDF2HTML(PDF2HTML):
         y_and_its_xs = {}
         num_horizon_line = 0
         num_vertical_line = 0
+
+
         for x in layout:
             # if(isinstance(x, LTRect)):
             if isinstance(x, LTRect) or isinstance(x, LTFigure):
@@ -1338,8 +1340,21 @@ class simplePDF2HTML(PDF2HTML):
                     }
                     if isLine == 'point':
                         table_raw_dash_lst.append(tmp_elem)
-                    else:
+                    elif isLine == 'y':
                         table_outline_elem_lst.append(tmp_elem)
+        y_and_sx = sorted(y_and_its_xs.iteritems(), key=lambda x: x[0])
+        for l in  y_and_sx:
+            last_p = l[1][0]
+            pairs = []
+            for i in range(1, len(l[1])):
+                if abs(last_p -l[1][i]) <=15: #12 is the size of a char
+                    pairs.insert(0,[i-1,i])
+                last_p = l[1][i]
+            for prex,curr in pairs:
+                del l[1][curr]
+            l[1].sort()
+            add_segs(l[1],l[0],table_outline_elem_lst)
+            
         # split_tables
         if  num_horizon_line > 2 and num_vertical_line < 2:
             sorted_lines = sorted(y_and_its_xs.iteritems(), key=lambda x: x[0])
@@ -1423,7 +1438,7 @@ class simplePDF2HTML(PDF2HTML):
                 num_cells = len(t[0][1])
                 for i in range(1,len(t)-1):
                     num_cell_line = len(t[i][1])
-                    if num_cells - num_cell_line > 2:
+                    if num_cells - num_cell_line > 0:
                         del_list.insert(0, i)
                 for del_id in del_list:
                     del my_tables[idx][del_id]
@@ -2049,7 +2064,7 @@ class simplePDF2HTML(PDF2HTML):
         bias, table_outline_elem_lst, table_raw_dash_lst, dashline_parser_xs, dashline_parser_ys = \
             self.get_tables_elements(layout,text_cols)
 
-        self.show_page_layout_lines(layout, table_outline_elem_lst)
+        #self.show_page_layout_lines(layout, table_outline_elem_lst)
         # step 2
         table_dashlines = self.get_tables_dashlines(table_raw_dash_lst, bias)
         print table_dashlines
