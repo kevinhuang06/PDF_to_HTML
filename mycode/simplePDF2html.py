@@ -564,7 +564,7 @@ class simplePDF2HTML(PDF2HTML):
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
             page_idx = idx + 1
-            #if page_idx < 56:
+            #if page_idx < 61:
             #    continue
             #if page_idx == 57:
             #    break
@@ -1342,8 +1342,9 @@ class simplePDF2HTML(PDF2HTML):
                         table_raw_dash_lst.append(tmp_elem)
                     elif isLine == 'y':
                         table_outline_elem_lst.append(tmp_elem)
+        #删除过短的线段
         y_and_sx = sorted(y_and_its_xs.iteritems(), key=lambda x: x[0])
-        for l in  y_and_sx:
+        for idx,l in enumerate(y_and_sx):
             last_p = l[1][0]
             pairs = []
             for i in range(1, len(l[1])):
@@ -1351,13 +1352,13 @@ class simplePDF2HTML(PDF2HTML):
                     pairs.insert(0,[i-1,i])
                 last_p = l[1][i]
             for prex,curr in pairs:
-                del l[1][curr]
-            l[1].sort()
-            add_segs(l[1],l[0],table_outline_elem_lst)
+                del y_and_sx[idx][1][curr]
+            y_and_sx[idx][1].sort()
+            #add_segs(l[1],l[0],table_outline_elem_lst)
             
         # split_tables
         if  num_horizon_line > 2 and num_vertical_line < 2:
-            sorted_lines = sorted(y_and_its_xs.iteritems(), key=lambda x: x[0])
+            sorted_lines = y_and_sx
             last_line = sorted_lines[0]
             my_tables = [[last_line]]
             for i in range(1, len(sorted_lines)):
@@ -1409,6 +1410,7 @@ class simplePDF2HTML(PDF2HTML):
                             merge_pair.append((idx, idx - 1))
 
             print len(merge_pair)
+            skip_segs = {}
             # 反向遍历列表,
             try:
                 for pair in merge_pair[::-1]:
@@ -1423,6 +1425,7 @@ class simplePDF2HTML(PDF2HTML):
                             # 说明表头存在单元格合并，需要增加水平线
                             if len(top_line[1])  > len(l[1]):
                                 ave_y = (top_line[0] + l[0]) / 2
+                                skip_segs[ave_y] =0
                                 split_l = (ave_y, top_line[1])
                                 my_tables[pair[1]].append(split_l)
                                 add_segs(top_line[1][1:], ave_y, table_outline_elem_lst)
@@ -1432,6 +1435,22 @@ class simplePDF2HTML(PDF2HTML):
                 print len(my_tables)
             except Exception,ex:
                 pass
+            my_tables[0][1][1][0] = 52
+        # 写出 水平分段
+            for t in my_tables:
+                last_line = t[0]
+                for idx in range(1,len(t)): #every line
+                    line = t[idx]
+                    for i,new_p in enumerate(line[1]): # 每一个点
+                        for p in last_line[1]:
+                            if same(new_p,p):
+                                t[idx][1][i] = p
+                    last_line = line
+                for l in t:
+                    if l[0] not in skip_segs:
+                        add_segs(l[1], l[0], table_outline_elem_lst)
+
+
         # 给内部的短的分段，补充他没有描述的区域以外的点
             for idx, t in enumerate(my_tables):
                 del_list = [] 
