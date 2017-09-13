@@ -77,6 +77,45 @@ base_struct = {
   "Token": None,
   "Message": None
 }
+
+def same(x,y):
+    return abs(x-y) < 1.1
+
+def sheet_head_split(t):
+    #第一行和第二行 分段数不同
+    l1 = t[-1][1]
+    l2 = t[-2][1]
+    start = 0
+    if len(l1) != len(l2):
+        for i in range(min(len(l1),len(l2))):
+            if same(l1[i], l2(i)):
+                start = i # record the same location
+            else:
+                break
+
+        y = max(20, (t[-1][0]+t[-2][0])/2)
+        return [y, l2[start:]]
+    else:
+        return None
+
+
+def merge_ys(t):
+    last_idx = 0
+    remove_idx = []
+    for curr in range(1,len(t)):
+        if abs(t[last_idx][0] - t[curr][0])<10: # 小于一个字符
+            if len(t[last_idx]) == 3 and t[last_idx][2] =='text': #优先保留文本计算出的行
+                remove_idx.append(curr)
+            else:
+                remove_idx.append(last_idx)
+                last_idx = curr
+        else:
+            last_idx = curr
+    for idx in remove_idx[::-1]:
+        del t[idx]
+
+
+
 def uniform_segs(t):
     last_line = t[0]
     left = last_line[1][0]
@@ -119,8 +158,7 @@ def in_range(value , bottom, up):
         return True
     return False
 
-def same(x,y):
-    return abs(x-y) < 1.1
+
 
 def get_corners(line, flag):
     text = ""
@@ -1455,45 +1493,18 @@ class simplePDF2HTML(PDF2HTML):
                 print len(my_tables)
             except Exception,ex:
                 pass
-        # 写出 水平分段
-            for i in range(len(my_tables)):
-                uniform_segs(my_tables[i])
-                # t=my_tables[i]
-                # last_line = t[0]
-                # left = last_line[1][0]
-                # right = last_line[1][-1]
-                # for idx in range(1,len(t)): #every line
-                #     line = t[idx]
-                #     left = min(left,line[1][0])
-                #     right =  max(right,line[1][-1])
-                #     for i,new_p in enumerate(line[1]): # 每一个点
-                #         for p in last_line[1]:
-                #             if same(new_p,p):
-                #                 t[idx][1][i] = p
-                #                 break
-                #     last_line = line
-                # # 确保线到达左右边界
-                # for idx in range(len(t)):
-                #     if left != t[idx][1][0]:
-                #         t[idx][1].insert(0, left)
-                #     if right != t[idx][1][-1]:
-                #         t[idx][1].append(right)
-
-                for l in my_tables[i]:
-                    if l[0] not in skip_segs:
-                        add_segs(l[1], l[0], table_outline_elem_lst)
 
 
         # 给内部的短的分段，补充他没有描述的区域以外的点
-            for idx, t in enumerate(my_tables):
-                del_list = [] 
-                num_cells = len(t[0][1])
-                for i in range(1,len(t)-1):
-                    num_cell_line = len(t[i][1])
-                    if num_cells - num_cell_line > 0:
-                        del_list.insert(0, i)
-                for del_id in del_list:
-                    del my_tables[idx][del_id]
+        #     for idx, t in enumerate(my_tables):
+        #         del_list = []
+        #         num_cells = len(t[0][1])
+        #         for i in range(1, len(t) - 1):
+        #             num_cell_line = len(t[i][1])
+        #             if num_cells - num_cell_line > 0:
+        #                 del_list.insert(0, i)
+        #         for del_id in del_list:
+        #             del my_tables[idx][del_id]
             for idx,t in enumerate(my_tables):
                 #找到 最大y,最小y 切分数据
                 t.sort(key=lambda x: x[0], reverse=True)
@@ -1515,9 +1526,27 @@ class simplePDF2HTML(PDF2HTML):
                     last_box = text_box[i]
                     ys.append(y)
                     print y
-                    my_tables[idx].append((y,t[-1][1]))
+                    my_tables[idx].append((y,t[-1][1],'text'))
                     #增加横线
-                    add_segs(t[-1][1], y, table_outline_elem_lst)
+                    #add_segs(t[-1][1], y, table_outline_elem_lst)
+
+            # 写出 水平分段
+           # for i in range(len(my_tables)):
+
+                # for l in my_tables[i]:
+                #    if l[0] not in skip_segs:
+                #        add_segs(l[1], l[0], table_outline_elem_lst)
+
+            for i in range(len(my_tables)):
+                my_tables[i].sort(key=lambda x:x[0])
+                merge_ys(my_tables[i])
+                uniform_segs(my_tables[i])
+                #split_l = sheet_head_split(t)
+                #if split_l:
+                #    my_tables[i].append(split_l)
+                for l in my_tables[i]:
+                    if l[0] not in skip_segs:
+                        add_segs(l[1], l[0], table_outline_elem_lst)
 
 
             for t in my_tables:
@@ -2116,7 +2145,7 @@ class simplePDF2HTML(PDF2HTML):
         bias, table_outline_elem_lst, table_raw_dash_lst, dashline_parser_xs, dashline_parser_ys = \
             self.get_tables_elements(layout,text_cols)
 
-        self.show_page_layout_lines(layout, table_outline_elem_lst)
+        #self.show_page_layout_lines(layout, table_outline_elem_lst)
         # step 2
         table_dashlines = self.get_tables_dashlines(table_raw_dash_lst, bias)
         print table_dashlines
