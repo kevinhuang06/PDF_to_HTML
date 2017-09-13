@@ -1423,29 +1423,40 @@ class simplePDF2HTML(PDF2HTML):
                             top_line = my_tables[pair[1]][-1]
                             # 向下合并，当表头
                             # 说明表头存在单元格合并，需要增加水平线
-                            if len(top_line[1])  > len(l[1]):
+                            if len(top_line[1]) > len(l[1]):
                                 ave_y = (top_line[0] + l[0]) / 2
                                 skip_segs[ave_y] =0
                                 split_l = (ave_y, top_line[1])
                                 my_tables[pair[1]].append(split_l)
                                 add_segs(top_line[1][1:], ave_y, table_outline_elem_lst)
                             my_tables[pair[1]].append(l)
-
-                        del my_tables[pair[0]]
+                    del my_tables[pair[0]]
                 print len(my_tables)
             except Exception,ex:
                 pass
-            my_tables[0][1][1][0] = 52
         # 写出 水平分段
-            for t in my_tables:
+            for i in range(len(my_tables)):
+                t=my_tables[i]
                 last_line = t[0]
+                left = last_line[1][0]
+                right = last_line[1][-1]
                 for idx in range(1,len(t)): #every line
                     line = t[idx]
+                    left = min(left,line[1][0])
+                    right =  max(right,line[1][-1])
                     for i,new_p in enumerate(line[1]): # 每一个点
                         for p in last_line[1]:
                             if same(new_p,p):
                                 t[idx][1][i] = p
+                                break
                     last_line = line
+                # 确保线到达左右边界
+                for idx in range(len(t)):
+                    if left != t[idx][1][0]:
+                        t[idx][1].insert(0, left)
+                    if right != t[idx][1][-1]:
+                        t[idx][1].append(right)
+
                 for l in t:
                     if l[0] not in skip_segs:
                         add_segs(l[1], l[0], table_outline_elem_lst)
@@ -1470,7 +1481,7 @@ class simplePDF2HTML(PDF2HTML):
                 last_y = 0
                 text_box = []
                 for l in text_cols:
-                    if in_range(l['box'][0][1], bottom ,up):
+                    if in_range(l['box'][0][1], bottom, up):
                         text_box.append([l['box'][0][1],l['box'][1][1]])
                 text_box.sort(key= lambda x:x[0])
                 if len(text_box) == 0:
