@@ -85,16 +85,15 @@ def sheet_head_split(t):
     #第一行和第二行 分段数不同
     l1 = t[-1][1]
     l2 = t[-2][1]
-    start = 0
+    start = 0 # 记录最后一次相等的点
     if len(l1) != len(l2):
         for i in range(min(len(l1),len(l2))):
-            if same(l1[i], l2(i)):
-                start = i # record the same location
-            else:
+            if not same(l1[i], l2[i]):
                 break
+            start = i  # record the same location
 
-        y = max(20, (t[-1][0]+t[-2][0])/2)
-        return [y, l2[start:]]
+        y = min(t[-1][0]-20, (t[-1][0]+t[-2][0])/2)
+        return [y, l1, start]
     else:
         return None
 
@@ -132,9 +131,13 @@ def uniform_segs(t):
         last_line = line
     # 确保线到达左右边界
     for idx in range(len(t)):
-        if left != t[idx][1][0]:
+        if same(left, t[idx][1][0]):
+            t[idx][1][0] = left #保证
+        else:
             t[idx][1].insert(0, left)
-        if right != t[idx][1][-1]:
+        if same(right, t[idx][1][-1]):
+            t[idx][1][-1] = right
+        else:
             t[idx][1].append(right)
 
 
@@ -1485,9 +1488,9 @@ class simplePDF2HTML(PDF2HTML):
                             if len(top_line[1]) > len(l[1]):
                                 ave_y = (top_line[0] + l[0]) / 2
                                 skip_segs[ave_y] =0
-                                split_l = (ave_y, top_line[1])
-                                my_tables[pair[1]].append(split_l)
-                                add_segs(top_line[1][1:], ave_y, table_outline_elem_lst)
+                                #split_l = (ave_y, top_line[1])
+                                #my_tables[pair[1]].append(split_l)
+                                #add_segs(top_line[1][1:], ave_y, table_outline_elem_lst)
                             my_tables[pair[1]].append(l)
                     del my_tables[pair[0]]
                 print len(my_tables)
@@ -1541,13 +1544,16 @@ class simplePDF2HTML(PDF2HTML):
                 my_tables[i].sort(key=lambda x:x[0])
                 merge_ys(my_tables[i])
                 uniform_segs(my_tables[i])
-                #split_l = sheet_head_split(t)
-                #if split_l:
-                #    my_tables[i].append(split_l)
+
                 for l in my_tables[i]:
                     if l[0] not in skip_segs:
                         add_segs(l[1], l[0], table_outline_elem_lst)
-
+                # 表头分割 单独画
+                split_l = sheet_head_split(my_tables[i])
+                if split_l:
+                    start = split_l[2]
+                    add_segs(split_l[1][start:], split_l[0], table_outline_elem_lst)
+                    my_tables[i].append(split_l)
 
             for t in my_tables:
                 t.sort(key=lambda x: x[0])
@@ -2145,7 +2151,7 @@ class simplePDF2HTML(PDF2HTML):
         bias, table_outline_elem_lst, table_raw_dash_lst, dashline_parser_xs, dashline_parser_ys = \
             self.get_tables_elements(layout,text_cols)
 
-        #self.show_page_layout_lines(layout, table_outline_elem_lst)
+        self.show_page_layout_lines(layout, table_outline_elem_lst)
         # step 2
         table_dashlines = self.get_tables_dashlines(table_raw_dash_lst, bias)
         print table_dashlines
