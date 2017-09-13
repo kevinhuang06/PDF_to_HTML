@@ -27,7 +27,7 @@ from pdfminer.layout import *
 reload(sys)
 sys.setdefaultencoding('utf8') #设置默认编码
 # sys.getdefaultencoding() #'ascii'
-
+UCC = 1
 
 base_struct = {
   "Total": 1,
@@ -83,19 +83,34 @@ def same(x,y):
 
 def sheet_head_split(t):
     #第一行和第二行 分段数不同
-    l1 = t[-1][1]
-    l2 = t[-2][1]
-    start = 0 # 记录最后一次相等的点
-    if len(l1) != len(l2):
-        for i in range(min(len(l1),len(l2))):
-            if not same(l1[i], l2[i]):
-                break
-            start = i  # record the same location
 
-        y = min(t[-1][0]-20, (t[-1][0]+t[-2][0])/2)
-        return [y, l1, start]
-    else:
-        return None
+    if len(t) >= 2:
+        l1 = t[-1][1]
+        l2 = t[-2][1]
+        start = 0 # 记录最后一次相等的点
+        # 检查表头点的一致性
+        for i in range(len(l1)):
+            if l1[i] not in l2:
+                dis = abs(l1[-1] - l1[0])
+                best_p = None
+                for p in l2:
+                    if abs(p - l1[i]) < dis:
+                        dis = abs(p - l1[i])
+                        best_p = p
+                if best_p not in l1:
+                    l1.append(best_p)
+
+        if len(l1) != len(l2):
+            for i in range(min(len(l1),len(l2))):
+                if not same(l1[i], l2[i]):
+                    break
+                start = i  # record the same location
+
+
+
+            y = min(t[-1][0]-20, (t[-1][0]+t[-2][0])/2)
+            return [y, l1, start]
+    return None
 
 
 def merge_ys(t):
@@ -657,7 +672,7 @@ class simplePDF2HTML(PDF2HTML):
             self.interpreter.process_page(page)
             # 接受该页面的LTPage对象
             layout = self.device.get_result()
-
+            #self.show_page_layout(layout)
             page_lines,text_cols = parse_page_to_lines(layout)
             col_lines = []
             #self.show_page_layout_lines(layout, col_lines)
@@ -673,7 +688,7 @@ class simplePDF2HTML(PDF2HTML):
             major_indents, map_indents, major_size = self.get_conclude(indent_list, fontsize_list)
             typical_length = content_width / major_size
             # get table contents in advance
-            #self.show_page_layout(layout)
+
             table_points_list, bias, table_divider_list = self.get_tables(layout,text_cols)
             table_frames = []
             in_table = []  # true / false
@@ -1404,8 +1419,35 @@ class simplePDF2HTML(PDF2HTML):
                         table_raw_dash_lst.append(tmp_elem)
                     elif isLine == 'y':
                         table_outline_elem_lst.append(tmp_elem)
-        #删除过短的线段
+
         y_and_sx = sorted(y_and_its_xs.iteritems(), key=lambda x: x[0])
+        #利用文本补全 最上和最下的表格线
+        uu = []
+        for l in text_cols:
+            uu.append([l['box'][0][1], l['box'][1][1], len(l['text_lines'])])
+        uu.sort(key=lambda x: x[0])
+        if len(uu) > 0 and len(y_and_sx) > 1:
+            bot_line = y_and_sx[0]
+            top_line = y_and_sx[-1]
+            for text_line in uu:
+                if text_line[0] < bot_line[0]:
+                    #text_line[2]表示的是矩形的个数
+                    if len(bot_line[1]) == text_line[2] + 1: # 左下角
+                        y_and_sx.insert(0, [text_line[0],bot_line[1]])
+                        break
+                else:
+                    break
+            for text_line in uu[::-1]:
+                if text_line[1] > top_line[0]:
+                    if len(top_line[1]) == text_line[2] + 1: # 右上角
+                        y_and_sx.append([text_line[1], top_line[1]])
+                        break
+                else:
+                    break
+            #pass
+
+
+        #删除过短的线段
         for idx,l in enumerate(y_and_sx):
             last_p = l[1][0]
             pairs = []
@@ -1571,7 +1613,9 @@ class simplePDF2HTML(PDF2HTML):
                         }
                         table_outline_elem_lst.append(tmp_elem)
 
-
+        else:
+            for l in y_and_sx:
+                add_segs(l[1], l[0], table_outline_elem_lst)
         lines = []
         points = {}
         for x in layout:
@@ -2150,8 +2194,8 @@ class simplePDF2HTML(PDF2HTML):
         # step 1
         bias, table_outline_elem_lst, table_raw_dash_lst, dashline_parser_xs, dashline_parser_ys = \
             self.get_tables_elements(layout,text_cols)
-
-        self.show_page_layout_lines(layout, table_outline_elem_lst)
+        if UCC:
+            self.show_page_layout_lines(layout, table_outline_elem_lst)
         # step 2
         table_dashlines = self.get_tables_dashlines(table_raw_dash_lst, bias)
         print table_dashlines
