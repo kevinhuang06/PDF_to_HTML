@@ -27,7 +27,7 @@ from pdfminer.layout import *
 reload(sys)
 sys.setdefaultencoding('utf8') #设置默认编码
 # sys.getdefaultencoding() #'ascii'
-UCC = 1
+UCC = 0
 
 base_struct = {
   "Total": 1,
@@ -97,7 +97,9 @@ def sheet_head_split(t):
                     if abs(p - l1[i]) < dis:
                         dis = abs(p - l1[i])
                         best_p = p
-                if best_p not in l1:
+                if best_p is None:
+                    return None
+                elif best_p not in l1:
                     l1.append(best_p)
 
         if len(l1) != len(l2):
@@ -105,9 +107,6 @@ def sheet_head_split(t):
                 if not same(l1[i], l2[i]):
                     break
                 start = i  # record the same location
-
-
-
             y = min(t[-1][0]-20, (t[-1][0]+t[-2][0])/2)
             return [y, l1, start]
     return None
@@ -641,8 +640,8 @@ class simplePDF2HTML(PDF2HTML):
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
             page_idx = idx + 1
-            #if page_idx < 61:
-            #    continue
+            if page_idx < 86:
+                continue
             #if page_idx == 57:
             #    break
             if idx > 0:
@@ -1652,10 +1651,13 @@ class simplePDF2HTML(PDF2HTML):
     # aid function
     def line_merge(self, range1, range2, bias=0):
         assert len(range1) == 2 and len(range2) == 2, "range should be an array containing 2 elements"
-        r1_min = min(range1) - bias
-        r1_max = max(range1) + bias
-        r2_min = min(range2) - bias
-        r2_max = max(range2) + bias
+        try:
+            r1_min = min(range1) - bias
+            r1_max = max(range1) + bias
+            r2_min = min(range2) - bias
+            r2_max = max(range2) + bias
+        except Exception,ex:
+            pass
         if (r1_min - r2_min) * (r1_min - r2_max) <= 0 or (r1_max - r2_min) * (r1_max - r2_max) <= 0 \
                 or (r2_min - r1_min) * (r2_min - r1_max) <= 0 or (r2_max - r1_min) * (r2_max - r1_max) <= 0:
             merged_range = [[min(r1_min, r2_min) + bias, max(r1_max, r2_max) - bias]]
