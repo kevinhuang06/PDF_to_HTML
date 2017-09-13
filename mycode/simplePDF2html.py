@@ -77,6 +77,27 @@ base_struct = {
   "Token": None,
   "Message": None
 }
+def uniform_segs(t):
+    last_line = t[0]
+    left = last_line[1][0]
+    right = last_line[1][-1]
+    for idx in range(1, len(t)):  # every line
+        line = t[idx]
+        left = min(left, line[1][0])
+        right = max(right, line[1][-1])
+        for i, new_p in enumerate(line[1]):  # 每一个点
+            for p in last_line[1]:
+                if same(new_p, p):
+                    t[idx][1][i] = p
+                    break
+        last_line = line
+    # 确保线到达左右边界
+    for idx in range(len(t)):
+        if left != t[idx][1][0]:
+            t[idx][1].insert(0, left)
+        if right != t[idx][1][-1]:
+            t[idx][1].append(right)
+
 
 def add_segs(xs,y,table_outline_elem_lst):
     last_x = xs[0]
@@ -1436,28 +1457,29 @@ class simplePDF2HTML(PDF2HTML):
                 pass
         # 写出 水平分段
             for i in range(len(my_tables)):
-                t=my_tables[i]
-                last_line = t[0]
-                left = last_line[1][0]
-                right = last_line[1][-1]
-                for idx in range(1,len(t)): #every line
-                    line = t[idx]
-                    left = min(left,line[1][0])
-                    right =  max(right,line[1][-1])
-                    for i,new_p in enumerate(line[1]): # 每一个点
-                        for p in last_line[1]:
-                            if same(new_p,p):
-                                t[idx][1][i] = p
-                                break
-                    last_line = line
-                # 确保线到达左右边界
-                for idx in range(len(t)):
-                    if left != t[idx][1][0]:
-                        t[idx][1].insert(0, left)
-                    if right != t[idx][1][-1]:
-                        t[idx][1].append(right)
+                uniform_segs(my_tables[i])
+                # t=my_tables[i]
+                # last_line = t[0]
+                # left = last_line[1][0]
+                # right = last_line[1][-1]
+                # for idx in range(1,len(t)): #every line
+                #     line = t[idx]
+                #     left = min(left,line[1][0])
+                #     right =  max(right,line[1][-1])
+                #     for i,new_p in enumerate(line[1]): # 每一个点
+                #         for p in last_line[1]:
+                #             if same(new_p,p):
+                #                 t[idx][1][i] = p
+                #                 break
+                #     last_line = line
+                # # 确保线到达左右边界
+                # for idx in range(len(t)):
+                #     if left != t[idx][1][0]:
+                #         t[idx][1].insert(0, left)
+                #     if right != t[idx][1][-1]:
+                #         t[idx][1].append(right)
 
-                for l in t:
+                for l in my_tables[i]:
                     if l[0] not in skip_segs:
                         add_segs(l[1], l[0], table_outline_elem_lst)
 
@@ -1499,7 +1521,7 @@ class simplePDF2HTML(PDF2HTML):
 
 
             for t in my_tables:
-                t.sort(key=lambda x: x[0], reverse=True)
+                t.sort(key=lambda x: x[0])
                 for i in range(1, len(t)):
                     last_line = t[i - 1]
                     for j in range(len(last_line[1])):
@@ -2094,7 +2116,7 @@ class simplePDF2HTML(PDF2HTML):
         bias, table_outline_elem_lst, table_raw_dash_lst, dashline_parser_xs, dashline_parser_ys = \
             self.get_tables_elements(layout,text_cols)
 
-        #self.show_page_layout_lines(layout, table_outline_elem_lst)
+        self.show_page_layout_lines(layout, table_outline_elem_lst)
         # step 2
         table_dashlines = self.get_tables_dashlines(table_raw_dash_lst, bias)
         print table_dashlines
