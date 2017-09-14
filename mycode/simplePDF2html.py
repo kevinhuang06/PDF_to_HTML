@@ -27,7 +27,7 @@ from pdfminer.layout import *
 reload(sys)
 sys.setdefaultencoding('utf8') #设置默认编码
 # sys.getdefaultencoding() #'ascii'
-UCC = 0
+UCC = 1
 
 base_struct = {
   "Total": 1,
@@ -1505,10 +1505,10 @@ class simplePDF2HTML(PDF2HTML):
                         if same(p, p_next):
                             same_next += 1
                 if same_next >= same_prex:
-                    if same_next > 1:
+                    if same_next > 2:
                         merge_pair.append((idx, idx + 1))
                 else:
-                    if same_prex >1:
+                    if same_prex > 2:
                         if (idx-1, idx) not in merge_pair:
                             merge_pair.append((idx, idx - 1))
 
@@ -1623,8 +1623,9 @@ class simplePDF2HTML(PDF2HTML):
                 right = x.x1
                 top = x.y1
                 bottom = x.y0
+                if same(x.x0, x.x1) or same(x.y0, x.y1): # 是dot
+                    continue
                 lines.append([(x.x0, x.y0),(x.x1, x.y1)])
-
         for seg in self.add_cross_point(lines, points):
             direct = 'x'
             if seg[0][0] == seg[1][0]:  # vertical
