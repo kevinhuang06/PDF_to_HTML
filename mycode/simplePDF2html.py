@@ -81,6 +81,38 @@ base_struct = {
 def same(x,y):
     return abs(x-y) < 1.1
 
+def merge_same_line(raw_lines) :
+    x_lines = {}
+    y_lines = {}
+    lines = []
+    for p in raw_lines:
+        if p[0][1] == p[1][1]:   # 水平线
+            if p[0][1] not in x_lines:
+                x_lines[p[0][1]] = []
+            x_lines[p[0][1]].extend([p[0][0],p[1][0]])
+        if p[0][0] == p[1][0]: # 垂直线
+            if p[0][0] not in y_lines:
+                y_lines[p[0][0]] = []
+            y_lines[p[0][0]].extend([p[0][1], p[1][1]])
+
+    for k in x_lines:
+        x_lines[k].sort()
+
+        start_p = x_lines[k][0]
+        last_p = start_p
+        for i in range(1, len(x_lines[k])):
+            curr = x_lines[k][i]
+            if curr - last_p > 2:#紧邻
+                lines.append(([start_p,k],[last_p,k]))
+                start_p = curr
+            last_p = curr
+
+    for k in y_lines:
+        y_lines[k].sort()
+        lines.append(([k, y_lines[k][0]],
+                      [k, y_lines[k][-1]]))
+    return lines
+
 def sheet_head_split(t):
     #第一行和第二行 分段数不同
 
@@ -640,8 +672,8 @@ class simplePDF2HTML(PDF2HTML):
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
             page_idx = idx + 1
-            if page_idx < 86:
-                continue
+            #if page_idx < 90:
+            #    continue
             #if page_idx == 57:
             #    break
             if idx > 0:
@@ -1309,10 +1341,10 @@ class simplePDF2HTML(PDF2HTML):
             print "left:{0}, right: {1}, top: {2}, bottom: {3}".format(left, right, top, bottom)
             if isLine == 'x':
                 fixed_y = (top + bottom) / 2.0
-                #draw.line(left, fixed_y, right, fixed_y)
+                draw.line(left, fixed_y, right, fixed_y)
             elif isLine == 'y':
                 fixed_x = (left + right) / 2.0
-                #draw.line(fixed_x, top, fixed_x, bottom)
+                draw.line(fixed_x, top, fixed_x, bottom)
             else:
                 pass
                 #if (right - left) > 12:
@@ -1419,6 +1451,7 @@ class simplePDF2HTML(PDF2HTML):
                     elif isLine == 'y':
                         table_outline_elem_lst.append(tmp_elem)
 
+
         y_and_sx = sorted(y_and_its_xs.iteritems(), key=lambda x: x[0])
         #利用文本补全 最上和最下的表格线
         uu = []
@@ -1504,11 +1537,12 @@ class simplePDF2HTML(PDF2HTML):
                     for p_next in next_line:
                         if same(p, p_next):
                             same_next += 1
-                if same_next >= same_prex:
-                    if same_next > 2:
+                #优先做表头的线
+                if same_next > same_prex:
+                    if same_next > 1:
                         merge_pair.append((idx, idx + 1))
                 else:
-                    if same_prex > 2:
+                    if same_prex > 1:  # 控制合并时的 相似点数量
                         if (idx-1, idx) not in merge_pair:
                             merge_pair.append((idx, idx - 1))
 
@@ -1611,10 +1645,6 @@ class simplePDF2HTML(PDF2HTML):
                             'isLine': 'y'
                         }
                         table_outline_elem_lst.append(tmp_elem)
-
-        else:
-            for l in y_and_sx:
-                add_segs(l[1], l[0], table_outline_elem_lst)
         lines = []
         points = {}
         for x in layout:
@@ -1623,9 +1653,11 @@ class simplePDF2HTML(PDF2HTML):
                 right = x.x1
                 top = x.y1
                 bottom = x.y0
-                if same(x.x0, x.x1) or same(x.y0, x.y1): # 是dot
-                    continue
-                lines.append([(x.x0, x.y0),(x.x1, x.y1)])
+                # if same(x.x0, x.x1) or same(x.y0, x.y1): # 是dot
+                #    continue
+                lines.append([(x.x0, x.y0), (x.x1, x.y1)])
+        # lines = merge_same_line(raw_lines)
+
         for seg in self.add_cross_point(lines, points):
             direct = 'x'
             if seg[0][0] == seg[1][0]:  # vertical
@@ -1638,6 +1670,13 @@ class simplePDF2HTML(PDF2HTML):
                 'isLine': direct
             }
             table_outline_elem_lst.append(tmp_elem)
+
+
+        else:
+            for l in y_and_sx:
+                add_segs(l[1], l[0], table_outline_elem_lst)
+        #raw_lines = []
+
 
         print len(table_raw_dash_lst),len(table_outline_elem_lst)
 
@@ -2433,6 +2472,7 @@ class TableFrame(object):
         # print self.grids['x']
         # print self.grids['y']
         # assert len(self.grids['x']) > 1 and len(self.grids['y']) > 1, "the table data does not represent an area"
+        #两个点确定一个单元格？ 处于同一条线上的不行
         if len(table_points_list) <= 2 or len(self.grids['x']) <= 1 or len(self.grids['y']) <= 1:
             self.grids = None
         else:
