@@ -27,7 +27,7 @@ from pdfminer.layout import *
 reload(sys)
 sys.setdefaultencoding('utf8') #设置默认编码
 # sys.getdefaultencoding() #'ascii'
-UCC = 1
+UCC = None
 
 base_struct = {
   "Total": 1,
@@ -672,9 +672,9 @@ class simplePDF2HTML(PDF2HTML):
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
             page_idx = idx + 1
-            #if page_idx < 90:
+            #if page_idx < 6:
             #    continue
-            #if page_idx == 57:
+            #if page_idx > 6:
             #    break
             if idx > 0:
                 #record last page
@@ -1414,15 +1414,14 @@ class simplePDF2HTML(PDF2HTML):
                         flag = True
                         for k in y_and_its_xs:
                             if same(shared_y, k):
-                                if not same(y_and_its_xs[k][-1],left):
-                                    y_and_its_xs[k].append(left)
-                                if not same(y_and_its_xs[k][-1], right):
-                                    y_and_its_xs[k].append(right)
+                                y_and_its_xs[k].add(left)
+                                y_and_its_xs[k].add(right)
                                 flag = False
+                                break
                         if flag:
-                            y_and_its_xs[shared_y] = []
-                            y_and_its_xs[shared_y].append(left)
-                            y_and_its_xs[shared_y].append(right)
+                            y_and_its_xs[shared_y] = set()  # 去重相近的重复线
+                            y_and_its_xs[shared_y].add(left)
+                            y_and_its_xs[shared_y].add(right)
                     elif isLine == 'y':
                         num_vertical_line +=1
                         line_stroke = right - left
@@ -1452,6 +1451,27 @@ class simplePDF2HTML(PDF2HTML):
                         table_outline_elem_lst.append(tmp_elem)
 
 
+        #remove point that is too close
+        for k in y_and_its_xs:
+
+            a = sorted(list(y_and_its_xs[k]))
+            last_p = a[0]
+            remove_id = []
+            if len(a) > 10:
+                pass
+            for i in range(1,len(a)):
+                if same(last_p, a[i]):
+                    if i == 1: #最左对，移除靠右
+                        remove_id.insert(0, 1)
+                    else:
+                        remove_id.insert(0, i-1)
+                        last_p = a[i]
+                else:
+                    last_p = a[i]
+            for idx in remove_id:
+                del a[idx]
+
+            y_and_its_xs[k] = a
         y_and_sx = sorted(y_and_its_xs.iteritems(), key=lambda x: x[0])
         #利用文本补全 最上和最下的表格线
         uu = []
@@ -1488,7 +1508,10 @@ class simplePDF2HTML(PDF2HTML):
                     pairs.insert(0,[i-1,i])
                 last_p = l[1][i]
             for prex,curr in pairs:
-                del y_and_sx[idx][1][curr]
+                if prex == 0:
+                    del y_and_sx[idx][1][curr] #如果是最左边，删除靠右的
+                else:
+                    del y_and_sx[idx][1][prex]
             y_and_sx[idx][1].sort()
             #add_segs(l[1],l[0],table_outline_elem_lst)
             
@@ -1514,7 +1537,8 @@ class simplePDF2HTML(PDF2HTML):
             print len(my_tables)
 
             single_table_id = []
-            # 把单一线 添加到临近的表格上去
+            # 把单一线 添加到临近的表格上去，
+            # 向下合并，单线一定要给到 点数比自己多的上边去，不然表格不封闭
             for idx, t in enumerate(my_tables):
                 if len(t) == 1:
                     single_table_id.append(idx)
@@ -1571,6 +1595,16 @@ class simplePDF2HTML(PDF2HTML):
                 print len(my_tables)
             except Exception,ex:
                 pass
+
+        #保证 表尾的分段数量部大于表头
+            for idx in range(len(my_tables)-1,0,-1):
+                my_tables[idx].sort()
+                t = my_tables[idx]
+                if len(t[-1][1]) > len(t[0][1]): #表头大于表尾，考虑与下一个表格合并
+                    if len(t[-1][1]) == len(my_tables[idx-1][1][-1]): #表头和下方表头 相同，考虑合并
+                        for l in t:
+                            my_tables[idx - 1].append(l)
+                        del my_tables[idx]
 
 
         # 给内部的短的分段，补充他没有描述的区域以外的点
