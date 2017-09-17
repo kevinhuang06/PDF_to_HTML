@@ -672,7 +672,7 @@ class simplePDF2HTML(PDF2HTML):
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
             page_idx = idx + 1
-            #if page_idx < 6:
+            #if page_idx < 2:
             #    continue
             #if page_idx > 6:
             #    break
@@ -1617,9 +1617,16 @@ class simplePDF2HTML(PDF2HTML):
         #                 del_list.insert(0, i)
         #         for del_id in del_list:
         #             del my_tables[idx][del_id]
+
+            # 对短直线做修正,至少和表尾相同
+            for idx,t in enumerate(my_tables):
+                for l_id,line in enumerate(t):
+                    if len(line[1]) < len(t[0][1]) and l_id  < len(t)-1: #表头不参与
+                        my_tables[idx][l_id] = (line[0], t[0][1])
+
             for idx,t in enumerate(my_tables):
                 #找到 最大y,最小y 切分数据
-                t.sort(key=lambda x: x[0], reverse=True)
+                t.sort(key=lambda x: x[0], reverse=True)  #从表头向表尾
                 up = t[0][0] #top y
                 bottom = t[-1][0]
                 ys = []

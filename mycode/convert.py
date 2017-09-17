@@ -36,9 +36,10 @@ fname_list = []
 # fname_list = ['data/simple1.PDF', 'data/simple2.PDF', 'data/simple3.PDF']
 #fname_list = ['pdf/table/table_example_19.pdf']
 
-fname_list = ['pdf/table/bt_2017-04-28_1203411656.PDF']
+#fname_list = ['pdf/table/bt_table_11_2017-04-28_1203411656.PDF']
+#fname_list = ['pdf/table/bt_table_6-16_2017-04-28_1203411656.PDF']
 #fname_list = ['pdf/table/table_90_2016-04-25-1202255836.PDF']
-#fname_list = ['pdf/table/table_58_2016-08-26-1202648670.PDF']
+fname_list = ['pdf/table/table_59_2016-08-26-1202648670.PDF']
 # fname_list = ['data/2016-01-19-1201924052.PDF']
 # fname_list = ['data/2016-01-19-1201924054.PDF']
 # fname_list = get_PDF_fnames('data/')
