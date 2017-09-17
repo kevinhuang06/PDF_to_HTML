@@ -95,3 +95,5 @@ for i in range(1, len(l[1])):
     l[1][0] = 52
     add_segs(l[1], l[0], table_outline_elem_lst)
     # 合并过短的线段，对齐 表格中的点位置
+
+

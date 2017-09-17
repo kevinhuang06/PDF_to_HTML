@@ -113,6 +113,31 @@ def merge_same_line(raw_lines) :
                       [k, y_lines[k][-1]]))
     return lines
 
+# a and sub is order list
+def is_sub_list(a, sub):
+    s = 0
+    try:
+         while  s <len(a) and not same(a[s], sub[0]):
+            s +=1
+    except Exception,ex:
+        pass
+    if len(a) - s < len(sub):
+        return False
+    flag = True
+    for i,v in enumerate(sub):
+        if not same(a[s+i], sub[i]):
+            flag = False
+            break
+    return flag
+
+
+
+
+
+
+
+
+
 def sheet_head_split(t):
     #第一行和第二行 分段数不同
 
@@ -672,7 +697,7 @@ class simplePDF2HTML(PDF2HTML):
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
             page_idx = idx + 1
-            #if page_idx < 2:
+            #if page_idx < 4:
             #    continue
             #if page_idx > 6:
             #    break
@@ -1522,13 +1547,21 @@ class simplePDF2HTML(PDF2HTML):
             my_tables = [[last_line]]
             for i in range(1, len(sorted_lines)):
                 # 分段数相同，位置完全相等
+
                 same_table = False
-                same_cc = 0
-                if len(last_line[1]) == len(sorted_lines[i][1]):
-                    same_table = True
-                    for k in range(len(last_line)):
-                        if not same(last_line[1][k], sorted_lines[i][1][k]):
-                            same_table = False
+
+                # if len(last_line[1]) == len(sorted_lines[i][1]):
+                #     same_table = True
+                #     for k in range(len(last_line)-1, 0, -1):
+                #         if not same(last_line[1][k], sorted_lines[i][1][k]):
+                #             same_table = False
+                #             break
+                # 短线点集是长线点集子集的，合并
+                if len(last_line[1]) >= len(sorted_lines[i][1]):
+                    same_table = is_sub_list(last_line[1], sorted_lines[i][1])
+                else:
+                    same_table = is_sub_list(sorted_lines[i][1],last_line[1])
+
                 if same_table:
                     my_tables[-1].append(sorted_lines[i])
                 else:
@@ -1538,7 +1571,7 @@ class simplePDF2HTML(PDF2HTML):
 
             single_table_id = []
             # 把单一线 添加到临近的表格上去，
-            # 向下合并，单线一定要给到 点数比自己多的上边去，不然表格不封闭
+            # 向下合并，单线一定要给到，点数比自己多的上边去，不然表格不封闭
             for idx, t in enumerate(my_tables):
                 if len(t) == 1:
                     single_table_id.append(idx)
