@@ -27,7 +27,7 @@ from pdfminer.layout import *
 reload(sys)
 sys.setdefaultencoding('utf8') #设置默认编码
 # sys.getdefaultencoding() #'ascii'
-UCC = None
+UCC = 1
 
 base_struct = {
   "Total": 1,
@@ -129,8 +129,6 @@ def is_sub_list(a, sub):
             flag = False
             break
     return flag
-
-
 
 
 
@@ -1630,7 +1628,7 @@ class simplePDF2HTML(PDF2HTML):
                 pass
 
         #保证 表尾的分段数量部大于表头
-            for idx in range(len(my_tables)-1,0,-1):
+            for idx in range(len(my_tables)-1, 0,-1):
                 my_tables[idx].sort()
                 t = my_tables[idx]
                 if len(t[-1][1]) > len(t[0][1]): #表头大于表尾，考虑与下一个表格合并
@@ -1670,7 +1668,7 @@ class simplePDF2HTML(PDF2HTML):
                         text_box.append([l['box'][0][1],l['box'][1][1]])
                 text_box.sort(key= lambda x:x[0])
                 if len(text_box) == 0:
-                    break
+                    continue
                 last_box = text_box[0]
                 show_up = False
                 for i in range(1,len(text_box)):
@@ -1719,6 +1717,7 @@ class simplePDF2HTML(PDF2HTML):
                             'isLine': 'y'
                         }
                         table_outline_elem_lst.append(tmp_elem)
+
         lines = []
         points = {}
         for x in layout:
@@ -1729,7 +1728,15 @@ class simplePDF2HTML(PDF2HTML):
                 bottom = x.y0
                 # if same(x.x0, x.x1) or same(x.y0, x.y1): # 是dot
                 #    continue
-                lines.append([(x.x0, x.y0), (x.x1, x.y1)])
+                flag = False
+                for t in my_tables:
+                    if in_range(x.y0, t[0][0], t[-1][0]) or in_range(x.y1, t[0][0], t[-1][0]):
+                        flag = False
+                        break
+                if flag:
+                    lines.append([(x.x0, x.y0), (x.x1, x.y1)])
+                #else:
+                #    pass
         # lines = merge_same_line(raw_lines)
 
         for seg in self.add_cross_point(lines, points):
