@@ -1498,10 +1498,11 @@ class simplePDF2HTML(PDF2HTML):
         y_and_sx = sorted(y_and_its_xs.iteritems(), key=lambda x: x[0])
 
         #移除页眉线和页脚线
-        if len(y_and_sx[0][1]) == 2:
-            del y_and_sx[0]
-        if len(y_and_sx[-1][1]) == 2:
-            del y_and_sx[-1]
+        if y_and_sx is not None and len(y_and_sx) > 1:
+            if len(y_and_sx[0][1]) == 2:
+                del y_and_sx[0]
+            if len(y_and_sx[-1][1]) == 2:
+                del y_and_sx[-1]
 
         # 删除过短的线段
         for idx, l in enumerate(y_and_sx):
@@ -1545,7 +1546,7 @@ class simplePDF2HTML(PDF2HTML):
             #pass
 
 
-
+        my_tables = []
         # split_tables
         if  num_horizon_line > 2 and num_vertical_line < 2:
             sorted_lines = y_and_sx
@@ -1737,6 +1738,7 @@ class simplePDF2HTML(PDF2HTML):
                 # if same(x.x0, x.x1) or same(x.y0, x.y1): # 是dot
                 #    continue
                 flag = True
+
                 for t in my_tables:
                     if in_range(x.y0, t[0][0], t[-1][0]) or in_range(x.y1, t[0][0], t[-1][0]):
                         flag = False
