@@ -27,7 +27,7 @@ from pdfminer.layout import *
 reload(sys)
 sys.setdefaultencoding('utf8') #设置默认编码
 # sys.getdefaultencoding() #'ascii'
-UCC = 1
+UCC = None
 
 base_struct = {
   "Total": 1,
@@ -1496,6 +1496,29 @@ class simplePDF2HTML(PDF2HTML):
 
             y_and_its_xs[k] = a
         y_and_sx = sorted(y_and_its_xs.iteritems(), key=lambda x: x[0])
+
+        #移除页眉线和页脚线
+        if len(y_and_sx[0][1]) == 2:
+            del y_and_sx[0]
+        if len(y_and_sx[-1][1]) == 2:
+            del y_and_sx[-1]
+
+        # 删除过短的线段
+        for idx, l in enumerate(y_and_sx):
+            last_p = l[1][0]
+            pairs = []
+            for i in range(1, len(l[1])):
+                if abs(last_p - l[1][i]) <= 15:  # 12 is the size of a char
+                    pairs.insert(0, [i - 1, i])
+                last_p = l[1][i]
+            for prex, curr in pairs:
+                if prex == 0:
+                    del y_and_sx[idx][1][curr]  # 如果是最左边，删除靠右的
+                else:
+                    del y_and_sx[idx][1][prex]
+            y_and_sx[idx][1].sort()
+            # add_segs(l[1],l[0],table_outline_elem_lst)
+
         #利用文本补全 最上和最下的表格线
         uu = []
         for l in text_cols:
@@ -1522,22 +1545,7 @@ class simplePDF2HTML(PDF2HTML):
             #pass
 
 
-        #删除过短的线段
-        for idx,l in enumerate(y_and_sx):
-            last_p = l[1][0]
-            pairs = []
-            for i in range(1, len(l[1])):
-                if abs(last_p -l[1][i]) <=15: #12 is the size of a char
-                    pairs.insert(0,[i-1,i])
-                last_p = l[1][i]
-            for prex,curr in pairs:
-                if prex == 0:
-                    del y_and_sx[idx][1][curr] #如果是最左边，删除靠右的
-                else:
-                    del y_and_sx[idx][1][prex]
-            y_and_sx[idx][1].sort()
-            #add_segs(l[1],l[0],table_outline_elem_lst)
-            
+
         # split_tables
         if  num_horizon_line > 2 and num_vertical_line < 2:
             sorted_lines = y_and_sx
@@ -1728,7 +1736,7 @@ class simplePDF2HTML(PDF2HTML):
                 bottom = x.y0
                 # if same(x.x0, x.x1) or same(x.y0, x.y1): # 是dot
                 #    continue
-                flag = False
+                flag = True
                 for t in my_tables:
                     if in_range(x.y0, t[0][0], t[-1][0]) or in_range(x.y1, t[0][0], t[-1][0]):
                         flag = False
