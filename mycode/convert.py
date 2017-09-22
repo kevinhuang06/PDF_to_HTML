@@ -1,3 +1,4 @@
+#coding=utf-8
 from simplePDF2html import *
 import os
 import copy
@@ -29,7 +30,7 @@ fname_list = []
 #'data2/bad_case/2014-12-29-64666524.PDF'
 #fname_list = ['data2/bad_case/2016-10-12-1202754801.PDF']#'data2/2016-08-11-1202559993.PDF'] # table testcase
 #fname_list = ['pdf/good/2017-04-10-1203280460.PDF']
-fname_list = ['data2/2016-04-25-1202255836.PDF']
+#fname_list = ['data2/2016-04-25-1202255836.PDF']
 #fname_list = ['pdf/good/2016-08-26-1202648670.PDF']
 #fname_list=['pdf/bad_html/2013-04-22-62408598.PDF']
 #fname_list = ['data/table_example_18.pdf']
@@ -38,16 +39,18 @@ fname_list = ['data2/2016-04-25-1202255836.PDF']
 
 #fname_list = ['pdf/table/bt_table_11_2017-04-28_1203411656.PDF']
 #fname_list = ['pdf/table/bt_table_6-16_2017-04-28_1203411656.PDF']
-#fname_list = ['pdf/table/table_90_2016-04-25-1202255836.PDF']
+fname_list = ['data/table_example_18.PDF']
 #fname_list = ['pdf/table/table_65_2016-08-26-1202648670.PDF']
 #fname_list = ['data2/2016-04-28-1202256878.PDF']
-# fname_list = ['data/2016-01-19-1201924054.PDF']
+#fname_list=['pdf/table/table_90_2016-04-25-1202255836.PDF']
+# 失败的表格
+#fname_list = ['pdf/table/page_140_2016-04-28-1202256878.PDF']
 # fname_list = get_PDF_fnames('data/')
 
 
-#for file_name in glob.glob(r"data2/*.PDF"):
+#for file_name in glob.glob(r"data/table*.pdf"):
 #	fname_list.append(file_name)
-print fname_list
+#print fname_list
 
 COUNT = True
 if COUNT:

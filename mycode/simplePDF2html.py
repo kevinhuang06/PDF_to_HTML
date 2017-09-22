@@ -27,7 +27,7 @@ from pdfminer.layout import *
 reload(sys)
 sys.setdefaultencoding('utf8') #设置默认编码
 # sys.getdefaultencoding() #'ascii'
-UCC = None
+UCC =1
 
 base_struct = {
   "Total": 1,
@@ -695,7 +695,7 @@ class simplePDF2HTML(PDF2HTML):
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
             page_idx = idx + 1
-            #if page_idx < 4:
+            #if page_idx < 5:
             #    continue
             #if page_idx > 6:
             #    break
@@ -1387,6 +1387,110 @@ class simplePDF2HTML(PDF2HTML):
                 break
         return closest_idx
 
+    def split_table(self, y_and_sx):
+        my_tables = []
+        if len(y_and_sx) < 1:
+            return [],[]
+        sorted_lines = y_and_sx
+        last_line = sorted_lines[0]
+        my_tables = [[last_line]]
+        for i in range(1, len(sorted_lines)):
+            # 分段数相同，位置完全相等
+
+            same_table = False
+
+            # if len(last_line[1]) == len(sorted_lines[i][1]):
+            #     same_table = True
+            #     for k in range(len(last_line)-1, 0, -1):
+            #         if not same(last_line[1][k], sorted_lines[i][1][k]):
+            #             same_table = False
+            #             break
+            # 短线点集是长线点集子集的，合并
+            if len(last_line[1]) >= len(sorted_lines[i][1]):
+                same_table = is_sub_list(last_line[1], sorted_lines[i][1])
+            else:
+                same_table = is_sub_list(sorted_lines[i][1], last_line[1])
+
+            if same_table:
+                my_tables[-1].append(sorted_lines[i])
+            else:
+                my_tables.append([sorted_lines[i]])
+            last_line = sorted_lines[i]
+
+        single_table_id = []
+        # 把单一线 添加到临近的表格上去，
+        # 向下合并，单线一定要给到，点数比自己多的上边去，不然表格不封闭
+        for idx, t in enumerate(my_tables):
+            if len(t) == 1:
+                single_table_id.append(idx)
+        # 单一线和其他数据的分段数不同，若是在表头处，需要添加一条水平直线，对表头做切割。
+
+        merge_pair = []
+        for idx in single_table_id:
+            prex_line = []
+            next_line = []
+            if idx > 0:
+                prex_line = my_tables[idx - 1][-1][1]
+            if idx + 1 < len(my_tables):
+                next_line = my_tables[idx + 1][0][1]
+            same_prex = 0
+            same_next = 0
+            for p in my_tables[idx][0][1]:
+                for p_prex in prex_line:
+                    if same(p, p_prex):
+                        same_prex += 1
+                for p_next in next_line:
+                    if same(p, p_next):
+                        same_next += 1
+            # 优先做表头的线
+            if same_next > same_prex:
+                if same_next > 1:
+                    merge_pair.append((idx, idx + 1))
+            else:
+                if same_prex > 1:  # 控制合并时的 相似点数量
+                    if (idx - 1, idx) not in merge_pair:
+                        merge_pair.append((idx, idx - 1))
+
+        skip_segs = {}
+        # 反向遍历列表,
+
+        for pair in merge_pair[::-1]:
+            for l in my_tables[pair[0]]:
+                # print l
+                # 0 是下边的table, 1 是上边的table
+                if pair[0] < pair[1]:
+                    my_tables[pair[1]].insert(0, l)
+                else:
+                    top_line = my_tables[pair[1]][-1]
+                    # 向下合并，当表头
+                    # 说明表头存在单元格合并，需要增加水平线
+                    if len(top_line[1]) > len(l[1]):
+                        ave_y = (top_line[0] + l[0]) / 2
+                        skip_segs[ave_y] = 0
+                        # split_l = (ave_y, top_line[1])
+                        # my_tables[pair[1]].append(split_l)
+                        # add_segs(top_line[1][1:], ave_y, table_outline_elem_lst)
+                    my_tables[pair[1]].append(l)
+            del my_tables[pair[0]]
+            # print len(my_tables)
+
+            # 保证 表尾的分段数量部大于表头
+        for idx in range(len(my_tables) - 1, 0, -1):
+            my_tables[idx].sort()
+            t = my_tables[idx]
+            if len(t[-1][1]) > len(t[0][1]):  # 表头大于表尾，考虑与下一个表格合并
+                if len(t[-1][1]) == len(my_tables[idx - 1][1][-1]):  # 表头和下方表头 相同，考虑合并
+                    for l in t:
+                        my_tables[idx - 1].append(l)
+                    del my_tables[idx]
+
+        # 对短直线做修正,至少和表尾相同
+        for idx, t in enumerate(my_tables):
+            for l_id, line in enumerate(t):
+                if len(line[1]) < len(t[0][1]) and l_id < len(t) - 1:  # 表头不参与
+                    my_tables[idx][l_id] = (line[0], t[0][1])
+
+        return my_tables,skip_segs
     #################
     # steps in get_tables
     # step 1
@@ -1403,6 +1507,7 @@ class simplePDF2HTML(PDF2HTML):
 
         for x in layout:
             # if(isinstance(x, LTRect)):
+
             if isinstance(x, LTRect) or isinstance(x, LTFigure):
                 left = x.x0
                 right = x.x1
@@ -1471,8 +1576,14 @@ class simplePDF2HTML(PDF2HTML):
                     if isLine == 'point':
                         table_raw_dash_lst.append(tmp_elem)
                     elif isLine == 'y':
-                        table_outline_elem_lst.append(tmp_elem)
 
+                        if tmp_elem['x1'] == tmp_elem['x0']:
+                            table_outline_elem_lst.append(tmp_elem)
+
+
+        #remove y-line that is too close
+        #remove_y_id = []
+        #for p in table_outline_elem_lst:
 
         #remove point that is too close
         for k in y_and_its_xs:
@@ -1546,123 +1657,9 @@ class simplePDF2HTML(PDF2HTML):
             #pass
 
 
-        my_tables = []
         # split_tables
+        my_tables,skip_segs  = self.split_table(y_and_sx)
         if  num_horizon_line > 2 and num_vertical_line < 2:
-            sorted_lines = y_and_sx
-            last_line = sorted_lines[0]
-            my_tables = [[last_line]]
-            for i in range(1, len(sorted_lines)):
-                # 分段数相同，位置完全相等
-
-                same_table = False
-
-                # if len(last_line[1]) == len(sorted_lines[i][1]):
-                #     same_table = True
-                #     for k in range(len(last_line)-1, 0, -1):
-                #         if not same(last_line[1][k], sorted_lines[i][1][k]):
-                #             same_table = False
-                #             break
-                # 短线点集是长线点集子集的，合并
-                if len(last_line[1]) >= len(sorted_lines[i][1]):
-                    same_table = is_sub_list(last_line[1], sorted_lines[i][1])
-                else:
-                    same_table = is_sub_list(sorted_lines[i][1],last_line[1])
-
-                if same_table:
-                    my_tables[-1].append(sorted_lines[i])
-                else:
-                    my_tables.append([sorted_lines[i]])
-                last_line = sorted_lines[i]
-            print len(my_tables)
-
-            single_table_id = []
-            # 把单一线 添加到临近的表格上去，
-            # 向下合并，单线一定要给到，点数比自己多的上边去，不然表格不封闭
-            for idx, t in enumerate(my_tables):
-                if len(t) == 1:
-                    single_table_id.append(idx)
-            #单一线和其他数据的分段数不同，若是在表头处，需要添加一条水平直线，对表头做切割。
-
-            merge_pair = []
-            for idx in single_table_id:
-                prex_line = []
-                next_line = []
-                if idx > 0:
-                    prex_line = my_tables[idx - 1][-1][1]
-                if idx + 1 < len(my_tables):
-                    next_line = my_tables[idx + 1][0][1]
-                same_prex = 0
-                same_next = 0
-                for p in my_tables[idx][0][1]:
-                    for p_prex in prex_line:
-                        if same(p, p_prex):
-                            same_prex += 1
-                    for p_next in next_line:
-                        if same(p, p_next):
-                            same_next += 1
-                #优先做表头的线
-                if same_next > same_prex:
-                    if same_next > 1:
-                        merge_pair.append((idx, idx + 1))
-                else:
-                    if same_prex > 1:  # 控制合并时的 相似点数量
-                        if (idx-1, idx) not in merge_pair:
-                            merge_pair.append((idx, idx - 1))
-
-            print len(merge_pair)
-            skip_segs = {}
-            # 反向遍历列表,
-            try:
-                for pair in merge_pair[::-1]:
-                    for l in my_tables[pair[0]]:
-                        print l
-                    # 0 是下边的table, 1 是上边的table
-                        if pair[0] < pair[1]:
-                            my_tables[pair[1]].insert(0, l)
-                        else:
-                            top_line = my_tables[pair[1]][-1]
-                            # 向下合并，当表头
-                            # 说明表头存在单元格合并，需要增加水平线
-                            if len(top_line[1]) > len(l[1]):
-                                ave_y = (top_line[0] + l[0]) / 2
-                                skip_segs[ave_y] =0
-                                #split_l = (ave_y, top_line[1])
-                                #my_tables[pair[1]].append(split_l)
-                                #add_segs(top_line[1][1:], ave_y, table_outline_elem_lst)
-                            my_tables[pair[1]].append(l)
-                    del my_tables[pair[0]]
-                print len(my_tables)
-            except Exception,ex:
-                pass
-
-        #保证 表尾的分段数量部大于表头
-            for idx in range(len(my_tables)-1, 0,-1):
-                my_tables[idx].sort()
-                t = my_tables[idx]
-                if len(t[-1][1]) > len(t[0][1]): #表头大于表尾，考虑与下一个表格合并
-                    if len(t[-1][1]) == len(my_tables[idx-1][1][-1]): #表头和下方表头 相同，考虑合并
-                        for l in t:
-                            my_tables[idx - 1].append(l)
-                        del my_tables[idx]
-
-
-        # 给内部的短的分段，补充他没有描述的区域以外的点
-        #     for idx, t in enumerate(my_tables):
-        #         del_list = []
-        #         num_cells = len(t[0][1])
-        #         for i in range(1, len(t) - 1):
-        #             num_cell_line = len(t[i][1])
-        #             if num_cells - num_cell_line > 0:
-        #                 del_list.insert(0, i)
-        #         for del_id in del_list:
-        #             del my_tables[idx][del_id]
-
-            # 对短直线做修正,至少和表尾相同
-            for idx,t in enumerate(my_tables):
-                for l_id,line in enumerate(t):
-                    if len(line[1]) < len(t[0][1]) and l_id  < len(t)-1: #表头不参与
-                        my_tables[idx][l_id] = (line[0], t[0][1])
 
             for idx,t in enumerate(my_tables):
                 #找到 最大y,最小y 切分数据
@@ -1684,7 +1681,6 @@ class simplePDF2HTML(PDF2HTML):
                     y = (last_box[1] + text_box[i][0])/2
                     last_box = text_box[i]
                     ys.append(y)
-                    print y
                     my_tables[idx].append((y,t[-1][1],'text'))
                     #增加横线
                     #add_segs(t[-1][1], y, table_outline_elem_lst)
@@ -1726,6 +1722,27 @@ class simplePDF2HTML(PDF2HTML):
                             'isLine': 'y'
                         }
                         table_outline_elem_lst.append(tmp_elem)
+        else:
+            for l in y_and_sx:
+                add_segs(l[1], l[0], table_outline_elem_lst)
+            #补全y
+            for t in my_tables:
+                t.sort(key=lambda x: x[0])
+                for i in range(1, len(t)):
+                    last_line = t[i - 1]
+                    for j in range(len(last_line[1])):
+
+                        x = last_line[1][j]
+                        tmp_elem = {
+                            'x0': x,
+                            'x1': x,
+                            'y0': last_line[0],
+                            'y1': t[i][0],
+                            'isLine': 'y'
+                        }
+                        table_outline_elem_lst.append(tmp_elem)
+
+
 
         lines = []
         points = {}
@@ -1763,13 +1780,11 @@ class simplePDF2HTML(PDF2HTML):
             table_outline_elem_lst.append(tmp_elem)
 
 
-        else:
-            for l in y_and_sx:
-                add_segs(l[1], l[0], table_outline_elem_lst)
+
         #raw_lines = []
 
 
-        print len(table_raw_dash_lst),len(table_outline_elem_lst)
+        #print len(table_raw_dash_lst),len(table_outline_elem_lst)
 
     ###
 
@@ -2275,7 +2290,8 @@ class simplePDF2HTML(PDF2HTML):
                         if same(tmp_ys[idx], pt2[1]):
                             end_line_idx = idx
                             break  # sorted
-
+                    if start_line_idx == -1 or end_line_idx == -1:
+                        pass
                     assert start_line_idx != -1 and end_line_idx != -1, "unrecorded point axis {0} or {1}, not recorded in {2}".format(
                         pt1[1], pt2[1], tmp_ys)
                     for idx in range(start_line_idx, end_line_idx):
