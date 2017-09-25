@@ -27,7 +27,7 @@ from pdfminer.layout import *
 reload(sys)
 sys.setdefaultencoding('utf8') #设置默认编码
 # sys.getdefaultencoding() #'ascii'
-UCC =1
+UCC = 1
 
 base_struct = {
   "Total": 1,
@@ -80,6 +80,25 @@ base_struct = {
 
 def same(x,y):
     return abs(x-y) < 1.1
+
+def split_lines(slash_elem_lst):
+    sv_line = []
+    segs = []
+    if len(slash_elem_lst) > 0:
+
+        for item in sorted(slash_elem_lst.iteritems(), key=lambda x: x[0][0]):
+            sv_line.append(item[0])
+
+        last_l = sv_line[0]
+        for i in range(len(sv_line)):
+            if sv_line[i][0] <  last_l[1] + 12: #未超过一个字符
+                last_l = [last_l[0], max(last_l[1], sv_line[i][1])]
+            else:
+                segs.append(last_l)
+                last_l = sv_line[i]
+        segs.append(last_l)
+    return segs
+
 
 def merge_same_line(raw_lines) :
     x_lines = {}
@@ -695,7 +714,7 @@ class simplePDF2HTML(PDF2HTML):
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
             page_idx = idx + 1
-            #if page_idx < 5:
+            #if page_idx < 2:
             #    continue
             #if page_idx > 6:
             #    break
@@ -1483,7 +1502,6 @@ class simplePDF2HTML(PDF2HTML):
                     for l in t:
                         my_tables[idx - 1].append(l)
                     del my_tables[idx]
-
         # 对短直线做修正,至少和表尾相同
         for idx, t in enumerate(my_tables):
             for l_id, line in enumerate(t):
@@ -1500,6 +1518,7 @@ class simplePDF2HTML(PDF2HTML):
         table_raw_dash_lst = []
         dashline_parser_xs = []
         dashline_parser_ys = []
+        slash_elem_lst = {}
         y_and_its_xs = {}
         num_horizon_line = 0
         num_vertical_line = 0
@@ -1576,9 +1595,16 @@ class simplePDF2HTML(PDF2HTML):
                     if isLine == 'point':
                         table_raw_dash_lst.append(tmp_elem)
                     elif isLine == 'y':
+                        pass
+                        #tmp_elem['x1'] = tmp_elem['x0']
+                        slash_elem_lst[(bottom,top)] = 0
+                        #table_outline_elem_lst.append(tmp_elem)
+                         # if  tmp_elem['x1'] == tmp_elem['x0']:
+                         #     table_outline_elem_lst.append(tmp_elem)
+                         # else:
+                         #     tmp_elem['x1'] = tmp_elem['x0']
+                         #     slash_elem_lst.append(tmp_elem)
 
-                        if tmp_elem['x1'] == tmp_elem['x0']:
-                            table_outline_elem_lst.append(tmp_elem)
 
 
         #remove y-line that is too close
@@ -1658,9 +1684,9 @@ class simplePDF2HTML(PDF2HTML):
 
 
         # split_tables
-        my_tables,skip_segs  = self.split_table(y_and_sx)
+        my_tables = []
         if  num_horizon_line > 2 and num_vertical_line < 2:
-
+            my_tables, skip_segs = self.split_table(y_and_sx)
             for idx,t in enumerate(my_tables):
                 #找到 最大y,最小y 切分数据
                 t.sort(key=lambda x: x[0], reverse=True)  #从表头向表尾
@@ -1723,15 +1749,51 @@ class simplePDF2HTML(PDF2HTML):
                         }
                         table_outline_elem_lst.append(tmp_elem)
         else:
+
+            # 移除距离太近的y
+            if len(y_and_sx) > 0:
+                del_ids = []
+                last_l = y_and_sx[0]
+                for i in range(1, len(y_and_sx)):
+                    if abs(last_l[0] - y_and_sx[i][0]) < 12: # 距离太近
+                        if len(y_and_sx[i][1]) < len(last_l[1]):
+                            del_ids.insert(0, i)
+                        else:
+                            del_ids.insert(0, i-1)
+                            last_l = y_and_sx[i]
+                    else:
+                        last_l = y_and_sx[i]
+                for idx in del_ids:
+                    del y_and_sx[idx]
+
+            #用竖线进行表格分割，先求竖线分段
+            segs = split_lines(slash_elem_lst)
+            my_tables= []
+            for s in segs:
+                t = []
+                for l in y_and_sx:
+                    if l[0] > s[0]-12 and l[0]<s[1]+12:
+                        t.append(l)
+                my_tables.append(t)
+
+
+            #补全短直线
+            for i,t in enumerate(my_tables):
+                for j in range(1,len(my_tables[i])-1):
+
+                    if len(my_tables[i][j][1]) < len(my_tables[i][j-1][1]):
+                        my_tables[i][j]=(my_tables[i][j][0],my_tables[i][j-1][1])
+
+
+            #画横线
             for l in y_and_sx:
                 add_segs(l[1], l[0], table_outline_elem_lst)
-            #补全y
+            #画竖线
             for t in my_tables:
                 t.sort(key=lambda x: x[0])
                 for i in range(1, len(t)):
                     last_line = t[i - 1]
                     for j in range(len(last_line[1])):
-
                         x = last_line[1][j]
                         tmp_elem = {
                             'x0': x,
@@ -1741,8 +1803,6 @@ class simplePDF2HTML(PDF2HTML):
                             'isLine': 'y'
                         }
                         table_outline_elem_lst.append(tmp_elem)
-
-
 
         lines = []
         points = {}
