@@ -27,7 +27,7 @@ from pdfminer.layout import *
 reload(sys)
 sys.setdefaultencoding('utf8') #设置默认编码
 # sys.getdefaultencoding() #'ascii'
-UCC = 1
+UCC = 0
 
 base_struct = {
   "Total": 1,
@@ -714,7 +714,7 @@ class simplePDF2HTML(PDF2HTML):
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
             page_idx = idx + 1
-            #if page_idx < 2:
+            #if page_idx < 94:
             #    continue
             #if page_idx > 6:
             #    break
@@ -1777,12 +1777,26 @@ class simplePDF2HTML(PDF2HTML):
                 my_tables.append(t)
 
 
-            #补全短直线
+            #补全短直线 && 保证两侧对齐
             for i,t in enumerate(my_tables):
-                for j in range(1,len(my_tables[i])-1):
+                left = 1000
+                right = 0
+                for l in t:
+                    left = min(l[1][0], left)
+                    right = max(l[1][-1], right)
+                #保证表格封闭
+                for j,l in enumerate(my_tables[i]):
+                    li = l[1]
+                    if not same(l[1][0],left):
+                        li.insert(0, left)
+                    if not same(l[1][-1], right):
+                        li.append(right)
+                    my_tables[i][j] = (l[0], li)
 
+                for j in range(1,len(my_tables[i])-1):
                     if len(my_tables[i][j][1]) < len(my_tables[i][j-1][1]):
                         my_tables[i][j]=(my_tables[i][j][0],my_tables[i][j-1][1])
+
 
 
             #画横线
