@@ -39,14 +39,14 @@ fname_list = []
 
 #fname_list = ['pdf/table/bt_table_11_2017-04-28_1203411656.PDF']
 #fname_list = ['pdf/table/bt_table_6-16_2017-04-28_1203411656.PDF']
-fname_list = ['data/table_example_15.PDF']
+#fname_list = ['data/table_example_15.PDF']
 #fname_list = ['pdf/table/table_65_2016-08-26-1202648670.PDF']
 #fname_list = ['data2/2016-08-30-1202642653.PDF']
 #fname_list=['pdf/table/table_90_2016-04-25-1202255836.PDF']
 # 失败的表格
 #fname_list = ['pdf/table/page_42_2016-07-29-1202527287.PDF']
 #fname_list = ['pdf/table/page_140_2016-04-28-1202256878.PDF']
-#fname_list = ['data2/2016-07-29-1202527287.PDF']
+fname_list = ['data2/2016-07-29-1202527287.PDF']
 # fname_list = get_PDF_fnames('data/')
 
 'data2/2016-08-30-1202642653.PDF'

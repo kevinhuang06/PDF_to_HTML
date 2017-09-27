@@ -714,10 +714,10 @@ class simplePDF2HTML(PDF2HTML):
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
             page_idx = idx + 1
-            #if page_idx < 94:
-            #    continue
-            #if page_idx > 6:
-            #    break
+            if page_idx < 94:
+                continue
+            if page_idx > 94:
+                break
             if idx > 0:
                 #record last page
                 #print "#%s#"%self.page_html[-5:]
@@ -1755,8 +1755,9 @@ class simplePDF2HTML(PDF2HTML):
                 del_ids = []
                 last_l = y_and_sx[0]
                 for i in range(1, len(y_and_sx)):
-                    if abs(last_l[0] - y_and_sx[i][0]) < 12: # 距离太近
-                        if len(y_and_sx[i][1]) < len(last_l[1]):
+                    if abs(last_l[0] - y_and_sx[i][0]) < 8: # 距离太近
+                        # 同列数，优先保留下边线，防止线都被移除了
+                        if len(y_and_sx[i][1]) <= len(last_l[1]):
                             del_ids.insert(0, i)
                         else:
                             del_ids.insert(0, i-1)
@@ -1866,6 +1867,7 @@ class simplePDF2HTML(PDF2HTML):
             bias = self.bias_param[0] * max_stroke  # 3 # 2 # 1.5
         else:
             bias = self.bias_param[1]  # 5 # 3 # 2
+
         return bias, table_outline_elem_lst, table_raw_dash_lst, dashline_parser_xs, dashline_parser_ys
 
     # aid function
@@ -2440,6 +2442,7 @@ class simplePDF2HTML(PDF2HTML):
 
         table_outline_elem_lst = self.get_tables_elements_all(table_outline_elem_lst, table_dashlines,
                                                               dashline_parser_xs, dashline_parser_ys)
+
         # step 3: 粗略分出不同表格的子区域
         clean_tables_lst = self.get_tables_areas(table_outline_elem_lst, bias)
 
