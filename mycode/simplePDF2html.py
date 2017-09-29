@@ -345,7 +345,7 @@ def parse_page_to_lines(layout):
     right_bound = 0
 
     for l in page_lines:
-        print l['box'][1][1] - l['box'][0][1], len(l['text_lines']),  l['box'][1][0] - l['box'][0][0]
+        #print l['box'][1][1] - l['box'][0][1], len(l['text_lines']),  l['box'][1][0] - l['box'][0][0]
         if left_bound > l['box'][0][0]:
             left_bound = l['box'][0][0]
         if right_bound < l['box'][1][0]:
@@ -359,7 +359,7 @@ def parse_page_to_lines(layout):
                 tables.append([l])
         len_last_line = len(l['text_lines'])
     #到这里就可以画出所有的水平线了
-    print len(tables)
+    #print len(tables)
     table_bound = []
     for t in tables:
         box = t[0]['box']
@@ -714,10 +714,10 @@ class simplePDF2HTML(PDF2HTML):
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
             page_idx = idx + 1
-            if page_idx < 94:
-                continue
-            if page_idx > 94:
-                break
+            # if page_idx < 94:
+            #     continue
+            # if page_idx > 94:
+            #     break
             if idx > 0:
                 #record last page
                 #print "#%s#"%self.page_html[-5:]
@@ -824,8 +824,6 @@ class simplePDF2HTML(PDF2HTML):
                                             corner1 = (char.x0, char.y1)
                                             corner2 = (char.x1, char.y0)
                                             location = table_frames[table_idx].locate(corner2)
-                                            # print location, text_line
-                                            # raw_input()
                                             if (location):
                                                 if location in parts.keys():
                                                     parts[location] += text_line
@@ -1696,7 +1694,7 @@ class simplePDF2HTML(PDF2HTML):
                 last_y = 0
                 text_box = []
                 for l in text_cols:
-                    if in_range(l['box'][0][1], bottom, up):
+                    if in_range(l['box'][0][1], bottom, up) and in_range(l['box'][1][1], bottom, up) :
                         text_box.append([l['box'][0][1],l['box'][1][1]])
                 text_box.sort(key= lambda x:x[0])
                 if len(text_box) == 0:
@@ -2776,12 +2774,10 @@ class TableFrame(object):
         # print self.grids['x']
         # print self.grids['y']
         for i in range(1, n_x):
-            # print "compare {0} with {1} and {2}".format(x, self.grids['x'][i - 1], self.grids['x'][i])
             if greater_than(x, self.grids['x'][i - 1]) and smaller_than(x, self.grids['x'][i]):
                 x_idx = i - 1
                 break
         for i in range(1, n_y):
-            # print "compare {0} with {1} and {2}".format(y, self.grids['y'][i - 1], self.grids['y'][i])
             if smaller_than(y, self.grids['y'][i - 1]) and greater_than(y, self.grids['y'][i]):
                 y_idx = i - 1
                 break

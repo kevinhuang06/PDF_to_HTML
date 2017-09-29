@@ -44,14 +44,14 @@ fname_list = []
 #fname_list = ['data2/2016-08-30-1202642653.PDF']
 #fname_list=['pdf/table/table_90_2016-04-25-1202255836.PDF']
 # 失败的表格
-#fname_list = ['pdf/table/page_42_2016-07-29-1202527287.PDF']
+fname_list = ['pdf/table/table_56_2016-08-26-1202648670.PDF']
 #fname_list = ['pdf/table/page_140_2016-04-28-1202256878.PDF']
-fname_list = ['data2/2016-07-29-1202527287.PDF']
+#fname_list = ['data2/2017-03-31-1203236915.PDF']
 # fname_list = get_PDF_fnames('data/')
 
 'data2/2016-08-30-1202642653.PDF'
 '2016-04-28-1202256878.PDF'
-'data2/2016-07-29-1202527287.PDF'
+#fname_list = ['pdf/2016-01-15-1201917164.PDF']
 # empty_colspan[representer_j] += 1
 'data2/2016-10-12-1202751015.PDF'
 #for file_name in glob.glob(r"data/*.pdf"):

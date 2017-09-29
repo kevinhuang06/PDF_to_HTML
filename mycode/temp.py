@@ -97,3 +97,13 @@ for i in range(1, len(l[1])):
     # 合并过短的线段，对齐 表格中的点位置
 
 
+def locate(self, point):
+    """此处省略 100行代码"""
+    for i in range(1, n_x):
+        if greater_than(x, self.grids['x'][i - 1]) and smaller_than(x, self.grids['x'][i]):
+            x_idx = i - 1
+            break
+    for i in range(1, n_y):
+        if smaller_than(y, self.grids['y'][i - 1]) and greater_than(y, self.grids['y'][i]):
+            y_idx = i - 1
+            break
