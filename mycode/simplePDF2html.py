@@ -714,10 +714,10 @@ class simplePDF2HTML(PDF2HTML):
         prev_length = None
         for idx,page in enumerate(PDFPage.create_pages(self.document)):
             page_idx = idx + 1
-            # if page_idx < 94:
-            #     continue
-            # if page_idx > 94:
-            #     break
+            # if page_idx < 63:
+            #      continue
+            # if page_idx > 63:
+            #      break
             if idx > 0:
                 #record last page
                 #print "#%s#"%self.page_html[-5:]
@@ -1773,7 +1773,8 @@ class simplePDF2HTML(PDF2HTML):
                 for l in y_and_sx:
                     if l[0] > s[0]-12 and l[0]<s[1]+12:
                         t.append(l)
-                my_tables.append(t)
+                if len(t) > 0:
+                    my_tables.append(t)
 
 
             #补全短直线 && 保证两侧对齐
